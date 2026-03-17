@@ -1,0 +1,96 @@
+{
+  "categories": ["Finance", "Resume", "AI", "Research", "Personal", "Legal", "Medical", "Other"],
+
+  "training_data": {
+    "Finance": [
+      "invoice payment receipt bank account balance transaction credit debit tax revenue expenses budget quarterly earnings profit loss financial statement",
+      "annual report revenue profit loss earnings per share dividend stock market investment portfolio financial forecast balance sheet cash flow",
+      "tax return income deduction irs w2 federal state refund withholding payroll salary wages gross net fiscal year",
+      "mortgage loan interest rate amortization principal payment lender borrower credit score refinance down payment property insurance",
+      "budget spreadsheet monthly expenses rent utilities groceries savings emergency fund debt repayment net worth financial planning",
+      "cryptocurrency bitcoin ethereum blockchain wallet exchange trading portfolio altcoin defi staking yield",
+      "audit compliance financial risk management hedge fund derivatives futures options securities equity bonds",
+      "purchase order vendor supplier payment terms net30 invoice number billing address accounts payable receivable"
+    ],
+    "Resume": [
+      "resume curriculum vitae work experience education skills objective summary references bachelor master degree university college GPA",
+      "professional experience software engineer manager analyst developer intern employment history responsibilities achievements linkedin",
+      "skills python java c++ communication leadership teamwork problem solving microsoft office project management certified",
+      "cover letter application position job opening hiring company team role responsibilities qualifications salary expectation",
+      "career objective seeking position motivated dynamic team player years experience proficient detail oriented results driven",
+      "internship volunteer work extracurricular activities awards honors certifications professional development training",
+      "references available upon request portfolio github projects open source contributions technical skills proficiency",
+      "agile scrum kanban product owner stakeholder management cross-functional team delivery milestone sprint backlog"
+    ],
+    "AI": [
+      "artificial intelligence machine learning deep learning neural network model training dataset accuracy loss epoch optimizer",
+      "natural language processing transformer BERT GPT attention mechanism tokenization embedding classification sentiment analysis",
+      "computer vision convolutional neural network image recognition object detection segmentation ResNet ImageNet feature extraction",
+      "reinforcement learning agent reward policy environment state action Q-learning deep Q-network exploration exploitation",
+      "large language model prompt engineering fine tuning few shot zero shot inference hallucination alignment RLHF",
+      "data science pandas numpy scikit-learn matplotlib seaborn regression classification clustering feature engineering",
+      "generative AI diffusion model GAN stable diffusion text-to-image multimodal foundation model",
+      "MLOps model deployment pipeline monitoring drift inference serving kubernetes docker containerization"
+    ],
+    "Research": [
+      "abstract introduction methodology results conclusion references hypothesis experiment data analysis statistical significance p-value",
+      "literature review peer reviewed journal publication citation index impact factor scholarly article empirical study findings",
+      "research paper study participants sample size control group variable measurement observation qualitative quantitative",
+      "university academic thesis dissertation committee defense graduate research grant funding proposal IRB ethics approval",
+      "experiment protocol procedure lab report hypothesis null alternative standard deviation mean variance confidence interval",
+      "systematic review meta-analysis randomized controlled trial cohort study longitudinal cross-sectional survey",
+      "ANOVA t-test chi-square regression correlation coefficient R-squared confidence interval statistical power",
+      "citation APA MLA Chicago bibliography footnote endnote DOI journal volume issue pages authors affiliation"
+    ],
+    "Personal": [
+      "dear diary today feeling happy sad birthday party family vacation trip holiday memories childhood friend",
+      "personal letter love family friend miss you hope well thinking of you best wishes warm regards sincerely",
+      "journal entry reflection gratitude mood thoughts feelings anxiety stress mindfulness meditation self-care routine",
+      "wedding anniversary birthday party invitation celebration guest list RSVP venue catering decoration photos memories",
+      "grocery list shopping errands laundry appointment doctor dentist reminder home maintenance personal tasks",
+      "travel itinerary hotel flight booking reservation passport visa destination sightseeing activities accommodation",
+      "recipe cooking baking ingredients instructions preparation time servings calories nutrition",
+      "fitness workout gym exercise routine calories steps weight loss health goals progress tracking"
+    ],
+    "Legal": [
+      "contract agreement terms conditions clause party obligation liability warranty disclaimer jurisdiction governing law",
+      "legal notice court filing plaintiff defendant attorney lawsuit settlement judgment verdict appeal",
+      "non-disclosure agreement NDA confidentiality proprietary information intellectual property trade secret",
+      "lease agreement tenant landlord rent property premises notice termination security deposit",
+      "employment contract offer letter at-will termination severance non-compete clause benefits compensation",
+      "privacy policy GDPR data protection personal information processing consent user rights",
+      "terms of service acceptable use policy prohibited content user agreement platform rules",
+      "power of attorney notarized affidavit sworn statement deposition subpoena court order injunction"
+    ],
+    "Medical": [
+      "patient diagnosis treatment prescription medication dosage symptoms clinical notes doctor nurse hospital",
+      "medical report blood test lab results CBC cholesterol blood pressure glucose hemoglobin",
+      "health insurance claim EOB explanation of benefits deductible copay premium coverage in-network",
+      "discharge summary admission diagnosis procedure operative findings follow-up care instructions",
+      "clinical trial study drug therapy intervention placebo control arm endpoint adverse events",
+      "radiology MRI CT scan X-ray ultrasound findings impression recommendation follow-up",
+      "vaccination immunization schedule booster dose side effects contraindications allergy",
+      "mental health therapy counseling depression anxiety PTSD CBT psychiatry mood disorder"
+    ],
+    "Other": [
+      "user manual installation guide troubleshooting FAQ instructions setup configuration system requirements steps procedure",
+      "meeting agenda minutes action items follow up stakeholders project status update timeline milestone deliverable",
+      "news article event report announcement press release spokesperson comment statement update information coverage",
+      "product description specification features price availability review rating customer feedback",
+      "presentation slide deck overview summary key points bullet points charts graphs figures",
+      "email newsletter subject body greeting signature unsubscribe list campaign marketing promotion"
+    ]
+  },
+
+  "classifier": {
+    "confidence_threshold": 0.18,
+    "ngram_range": [1, 2],
+    "naive_bayes_alpha": 0.4
+  },
+
+  "organizer": {
+    "supported_extensions": [".pdf", ".txt", ".docx", ".xlsx", ".pptx", ".csv", ".png", ".jpg", ".jpeg"],
+    "fallback_category": "Other",
+    "recursive": false
+  }
+}
