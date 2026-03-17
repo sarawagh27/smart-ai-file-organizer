@@ -1,0 +1,49 @@
+# ── Python ──────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# ── Virtual environments ─────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Distribution / packaging ─────────────────────────
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+
+# ── Logs & runtime output ────────────────────────────
+*.log
+organizer.log
+
+# ── Environment variables ────────────────────────────
+.env
+.env.*
+
+# ── Testing & coverage ───────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ── IDEs & editors ───────────────────────────────────
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# ── OS files ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Temporary / misc ─────────────────────────────────
+*.zip
+*.tar.gz
+*.tmp
+*.bak
