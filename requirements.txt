@@ -3,10 +3,13 @@ PyPDF2>=3.0.0
 python-docx>=1.1.0
 scikit-learn>=1.4.0
 
-# New file type support
+# File type support
 openpyxl>=3.1.0
 python-pptx>=0.6.21
 Pillow>=10.0.0
+
+# Watch Mode
+watchdog>=4.0.0
 
 # Optional: OCR for images (requires Tesseract installed separately)
 # pytesseract>=0.3.10

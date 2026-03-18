@@ -5,8 +5,14 @@ Tkinter GUI for the Smart AI File Organizer.
 
 Run: python gui.py
 
-Supports all file types: PDF, DOCX, TXT, XLSX, PPTX, CSV, PNG, JPG
-Supports recursive scanning and dry-run preview mode.
+Features:
+  - Browse and organise any folder
+  - Preview (dry run) mode — safe, no files moved
+  - Organise Now — moves files into category folders
+  - Watch Mode — monitors folder in real-time, auto-organises new files
+  - Recursive scanning
+  - Live colour-coded activity log
+  - Stats bar
 """
 
 import logging
@@ -22,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 
 from organizer import FileOrganizer
 from utils import scan_directory
+from watcher import FolderWatcher
 
 # ── colour palette ──────────────────────────────────────────────────────────
 BG          = "#1e1e2e"
@@ -29,6 +36,8 @@ SURFACE     = "#2a2a3e"
 SURFACE2    = "#313147"
 ACCENT      = "#7c6af7"
 ACCENT_DARK = "#5a48d4"
+WATCH_CLR   = "#06b6d4"   # cyan for watch mode
+WATCH_DARK  = "#0891b2"
 SUCCESS     = "#4ade80"
 WARNING     = "#fbbf24"
 ERROR       = "#f87171"
@@ -51,14 +60,17 @@ class SmartOrganizerApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Smart AI File Organizer")
-        self.geometry("820x680")
-        self.minsize(700, 580)
+        self.geometry("820x700")
+        self.minsize(700, 600)
         self.configure(bg=BG)
 
         self._folder    = tk.StringVar()
         self._dry_run   = tk.BooleanVar(value=True)
         self._recursive = tk.BooleanVar(value=False)
         self._running   = False
+        self._watching  = False
+        self._watcher   = None
+        self._watch_thread = None
         self._log_queue : queue.Queue = queue.Queue()
 
         self._build_fonts()
@@ -71,6 +83,9 @@ class SmartOrganizerApp(tk.Tk):
         self._build_stats_bar()
         self._setup_logging()
         self._poll_log_queue()
+
+        # Handle window close — stop watcher if running
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _build_fonts(self):
         self.font_title = font.Font(family="Segoe UI", size=16, weight="bold")
@@ -118,7 +133,6 @@ class SmartOrganizerApp(tk.Tk):
         frame = tk.Frame(self, bg=BG, padx=20, pady=2)
         frame.pack(fill="x")
 
-        # Mode selector
         tk.Label(frame, text="Mode:", font=self.font_label,
                  bg=BG, fg=TEXT).pack(side="left", padx=(0, 10))
 
@@ -134,16 +148,14 @@ class SmartOrganizerApp(tk.Tk):
                        variable=self._dry_run, value=False,
                        **rb_style).pack(side="left", padx=(0, 30))
 
-        # Recursive toggle
         tk.Checkbutton(
-            frame, text="📂 Include sub-folders (recursive)",
+            frame, text="📂 Include sub-folders",
             variable=self._recursive,
             bg=BG, fg=TEXT, activebackground=BG, activeforeground=WHITE,
             selectcolor=SURFACE, font=self.font_label, cursor="hand2", bd=0,
         ).pack(side="left")
 
     def _build_file_types_row(self):
-        """Show supported file type badges."""
         frame = tk.Frame(self, bg=BG, padx=20, pady=6)
         frame.pack(fill="x")
 
@@ -165,15 +177,27 @@ class SmartOrganizerApp(tk.Tk):
         frame = tk.Frame(self, bg=BG, padx=20, pady=8)
         frame.pack(fill="x")
 
+        # Run button
         self._btn_run = tk.Button(
             frame, text="▶  Run",
             font=self.font_btn, bg=ACCENT, fg=WHITE,
             activebackground=ACCENT_DARK, activeforeground=WHITE,
-            bd=0, padx=28, pady=8, cursor="hand2", relief="flat",
+            bd=0, padx=24, pady=8, cursor="hand2", relief="flat",
             command=self._run,
         )
         self._btn_run.pack(side="left", padx=(0, 10))
 
+        # Watch Mode button
+        self._btn_watch = tk.Button(
+            frame, text="👁  Watch Mode",
+            font=self.font_btn, bg=WATCH_CLR, fg=WHITE,
+            activebackground=WATCH_DARK, activeforeground=WHITE,
+            bd=0, padx=20, pady=8, cursor="hand2", relief="flat",
+            command=self._toggle_watch,
+        )
+        self._btn_watch.pack(side="left", padx=(0, 10))
+
+        # Clear Log button
         tk.Button(frame, text="🗑  Clear Log",
                   font=self.font_btn, bg=SURFACE2, fg=TEXT,
                   activebackground=BG, activeforeground=WHITE,
@@ -203,6 +227,7 @@ class SmartOrganizerApp(tk.Tk):
         self._log_text.tag_config("ERROR",   foreground=ERROR)
         self._log_text.tag_config("DEBUG",   foreground=MUTED)
         self._log_text.tag_config("SUCCESS", foreground=SUCCESS)
+        self._log_text.tag_config("WATCH",   foreground=WATCH_CLR)
         self._log_text.tag_config("TIME",    foreground=MUTED)
 
     def _build_stats_bar(self):
@@ -214,11 +239,15 @@ class SmartOrganizerApp(tk.Tk):
             "moved":  tk.StringVar(value="Moved: —"),
             "dupes":  tk.StringVar(value="Duplicates: —"),
             "errors": tk.StringVar(value="Errors: —"),
+            "mode":   tk.StringVar(value=""),
         }
-        colours = {"total": TEXT, "moved": SUCCESS, "dupes": WARNING, "errors": ERROR}
+        colours = {
+            "total": TEXT, "moved": SUCCESS,
+            "dupes": WARNING, "errors": ERROR, "mode": WATCH_CLR,
+        }
         for key, var in self._stat_vars.items():
             tk.Label(bar, textvariable=var, font=self.font_stat,
-                     bg=SURFACE, fg=colours[key], padx=20).pack(side="left")
+                     bg=SURFACE, fg=colours[key], padx=16).pack(side="left")
 
     def _setup_logging(self):
         self._q_handler = QueueHandler(self._log_queue)
@@ -246,22 +275,36 @@ class SmartOrganizerApp(tk.Tk):
 
         self._log_text.insert("end", f"{timestamp}  ", "TIME")
         self._log_text.insert("end", f"[{level:<7}]  ", level)
-        tag = "SUCCESS" if ("Run complete" in message or "Moved '" in message) else level
+
+        # Colour logic
+        if "WATCH MODE" in message or "👁" in message or "Watching" in message:
+            tag = "WATCH"
+        elif "Run complete" in message or "Moved '" in message or "✅" in message:
+            tag = "SUCCESS"
+        else:
+            tag = level
+
         self._log_text.insert("end", message + "\n", tag)
         self._log_text.configure(state="disabled")
         self._log_text.see("end")
 
+    # ── browse ───────────────────────────────────────────────────────────────
     def _browse(self):
         folder = filedialog.askdirectory(title="Select folder to organise")
         if folder:
             self._folder.set(folder)
-            recursive = self._recursive.get()
-            files = scan_directory(folder, recursive=recursive)
+            files = scan_directory(folder, recursive=self._recursive.get())
             self._append_info(
                 f"📁 Selected: {folder}  →  {len(files)} supported file(s) found."
             )
 
+    # ── run (organise once) ──────────────────────────────────────────────────
     def _run(self):
+        if self._watching:
+            messagebox.showwarning("Watch Mode Active",
+                                   "Stop Watch Mode first before running a one-time organise.")
+            return
+
         folder = self._folder.get().strip()
         if not folder:
             messagebox.showwarning("No folder selected", "Please select a folder first.")
@@ -273,10 +316,9 @@ class SmartOrganizerApp(tk.Tk):
             return
 
         if not self._dry_run.get():
-            recursive_note = "\n\nIncludes all sub-folders." if self._recursive.get() else ""
             ok = messagebox.askyesno(
                 "Confirm Organise",
-                f"Files in:\n  {folder}\n\nwill be MOVED into category sub-folders.{recursive_note}\n\nContinue?"
+                f"Files in:\n  {folder}\n\nwill be MOVED into category sub-folders.\n\nContinue?"
             )
             if not ok:
                 return
@@ -316,7 +358,9 @@ class SmartOrganizerApp(tk.Tk):
         self._stat_vars["errors"].set(f"Errors: {stats['errors']}")
 
         mode = "DRY RUN complete" if dry_run else "✅ Done"
-        self._append_info(f"\n{mode} — {stats['moved']} file(s) {'would be moved' if dry_run else 'moved'}.")
+        self._append_info(
+            f"\n{mode} — {stats['moved']} file(s) {'would be moved' if dry_run else 'moved'}."
+        )
 
         if not dry_run and stats["moved"] > 0:
             messagebox.showinfo(
@@ -332,9 +376,85 @@ class SmartOrganizerApp(tk.Tk):
         self._spinner_lbl.configure(text="")
         messagebox.showerror("Error", f"Something went wrong:\n\n{message}")
 
+    # ── watch mode ───────────────────────────────────────────────────────────
+    def _toggle_watch(self):
+        if self._watching:
+            self._stop_watch()
+        else:
+            self._start_watch()
+
+    def _start_watch(self):
+        folder = self._folder.get().strip()
+        if not folder:
+            messagebox.showwarning("No folder selected", "Please select a folder first.")
+            return
+        if not Path(folder).is_dir():
+            messagebox.showerror("Invalid folder", f"Folder not found:\n{folder}")
+            return
+        if self._running:
+            messagebox.showwarning("Busy", "Wait for the current run to finish first.")
+            return
+
+        self._watching = True
+        self._btn_watch.configure(text="⛔  Stop Watching", bg=ERROR,
+                                  activebackground="#dc2626")
+        self._btn_run.configure(state="disabled")
+        self._stat_vars["mode"].set("👁 WATCH MODE ACTIVE")
+        self._spinner_lbl.configure(text="")
+
+        self._append_watch(
+            f"\n👁  Watch Mode started — monitoring: {folder}\n"
+            f"   Drop files into the folder and they will be organised automatically.\n"
+        )
+
+        self._watch_thread = threading.Thread(
+            target=self._run_watcher,
+            args=(folder, self._recursive.get()),
+            daemon=True,
+        )
+        self._watch_thread.start()
+
+    def _run_watcher(self, folder, recursive):
+        try:
+            self._watcher = FolderWatcher(
+                target_dir=folder,
+                delay=2.0,
+                recursive=recursive,
+            )
+            self._watcher.start()   # blocks until stopped
+        except Exception as exc:
+            logging.getLogger(__name__).error("Watcher error: %s", exc)
+            self.after(0, self._on_watch_error, str(exc))
+
+    def _stop_watch(self):
+        if self._watcher and self._watcher.observer.is_alive():
+            self._watcher.observer.stop()
+
+        self._watching = False
+        self._btn_watch.configure(text="👁  Watch Mode", bg=WATCH_CLR,
+                                  activebackground=WATCH_DARK)
+        self._btn_run.configure(state="normal")
+        self._stat_vars["mode"].set("")
+        self._append_watch("\n⛔  Watch Mode stopped.\n")
+
+    def _on_watch_error(self, message):
+        self._watching = False
+        self._btn_watch.configure(text="👁  Watch Mode", bg=WATCH_CLR,
+                                  activebackground=WATCH_DARK)
+        self._btn_run.configure(state="normal")
+        self._stat_vars["mode"].set("")
+        messagebox.showerror("Watch Mode Error", f"Something went wrong:\n\n{message}")
+
+    # ── helpers ──────────────────────────────────────────────────────────────
     def _append_info(self, text):
         self._log_text.configure(state="normal")
         self._log_text.insert("end", text + "\n", "INFO")
+        self._log_text.configure(state="disabled")
+        self._log_text.see("end")
+
+    def _append_watch(self, text):
+        self._log_text.configure(state="normal")
+        self._log_text.insert("end", text + "\n", "WATCH")
         self._log_text.configure(state="disabled")
         self._log_text.see("end")
 
@@ -344,9 +464,14 @@ class SmartOrganizerApp(tk.Tk):
         self._log_text.configure(state="disabled")
 
     def _reset_stats(self):
-        for k, label in [("total","Files: …"),("moved","Moved: …"),
-                          ("dupes","Duplicates: …"),("errors","Errors: …")]:
+        for k, label in [("total", "Files: …"), ("moved", "Moved: …"),
+                          ("dupes", "Duplicates: …"), ("errors", "Errors: …")]:
             self._stat_vars[k].set(label)
+
+    def _on_close(self):
+        if self._watching:
+            self._stop_watch()
+        self.destroy()
 
 
 def main():
