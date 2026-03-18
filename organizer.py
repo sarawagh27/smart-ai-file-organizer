@@ -8,7 +8,8 @@ Orchestrates the full file-organising pipeline:
   3. Extract text from each file
   4. Classify text into a category
   5. Move file (or simulate in dry-run mode)
-  6. Return run statistics
+  6. Show progress bar (tqdm)
+  7. Return run statistics
 """
 
 import logging
@@ -19,7 +20,6 @@ from classifier import DocumentClassifier
 from duplicate_detector import DuplicateDetector
 from text_extractor import extract_text
 from utils import (
-    CATEGORIES,
     create_category_folders,
     safe_move,
     scan_directory,
@@ -37,13 +37,22 @@ class FileOrganizer:
     target_dir : str   — folder to scan and organise
     dry_run    : bool  — if True, simulate without moving files
     recursive  : bool  — if True, scan sub-folders too
+    show_progress : bool — show tqdm progress bar (default True in CLI)
     """
 
-    def __init__(self, target_dir: str, dry_run: bool = False, recursive: bool = False):
-        self.target_dir = str(Path(target_dir).resolve())
-        self.dry_run   = dry_run
-        self.recursive = recursive
-        self.classifier        = DocumentClassifier()
+    def __init__(
+        self,
+        target_dir: str,
+        dry_run: bool = False,
+        recursive: bool = False,
+        show_progress: bool = False,
+    ):
+        self.target_dir     = str(Path(target_dir).resolve())
+        self.dry_run        = dry_run
+        self.recursive      = recursive
+        self.show_progress  = show_progress
+
+        self.classifier         = DocumentClassifier()
         self.duplicate_detector = DuplicateDetector()
 
         self._stats: Dict = {
@@ -81,7 +90,24 @@ class FileOrganizer:
             logger.warning("No supported files found. Nothing to do.")
             return self._stats
 
-        for filepath in files:
+        # ── progress bar (tqdm) ─────────────────────────────────────────────
+        if self.show_progress:
+            try:
+                from tqdm import tqdm
+                iterator = tqdm(
+                    files,
+                    desc="Organising",
+                    unit="file",
+                    bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} files [{elapsed}]",
+                    colour="cyan",
+                )
+            except ImportError:
+                logger.warning("tqdm not installed — no progress bar. Run: pip install tqdm")
+                iterator = files
+        else:
+            iterator = files
+
+        for filepath in iterator:
             self._process_file(filepath)
 
         logger.info(sep)
