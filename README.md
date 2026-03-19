@@ -209,7 +209,6 @@ Expected: **40 passed**
 - [x] ~~Undo feature~~ ✅
 - [x] ~~Progress bar~~ ✅
 - [x] ~~More file types (EML, MSG, ZIP)~~ ✅
-- [x] ~~Statistics dashboard~~ ✅
 
 ---
 
