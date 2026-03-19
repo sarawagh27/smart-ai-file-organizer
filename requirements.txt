@@ -3,6 +3,12 @@ PyPDF2>=3.0.0
 python-docx>=1.1.0
 scikit-learn>=1.4.0
 
+# Level 2 — Better AI model (downloads ~90MB model on first run)
+sentence-transformers>=2.7.0
+
+# Level 2 — Language detection
+langdetect>=1.0.9
+
 # File type support
 openpyxl>=3.1.0
 python-pptx>=0.6.21
