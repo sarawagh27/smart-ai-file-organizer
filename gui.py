@@ -3,26 +3,20 @@ gui.py
 ------
 Tkinter GUI for the Smart AI File Organizer.
 
-Run: python gui.py
-
-Features:
-  - Browse and organise any folder
-  - Preview (dry run) mode
-  - Organise Now — moves files
-  - Watch Mode — real-time monitoring
-  - Undo — restore files from log
-  - Recursive scanning
-  - Progress bar in log
-  - Live colour-coded activity log
+Level 1 additions:
+  1. Confidence scores — shown in results table with colour coding
+  2. Manual Override — right-click any result to change its category
+  3. Dark/Light theme toggle — saves preference to config.json
 """
 
+import json
 import logging
 import queue
 import sys
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, font, messagebox, scrolledtext
+from tkinter import filedialog, font, messagebox, scrolledtext, ttk
 
 ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
@@ -32,9 +26,19 @@ from undo import undo_moves
 from utils import scan_directory
 from watcher import FolderWatcher
 
-BG          = "#1e1e2e"
-SURFACE     = "#2a2a3e"
-SURFACE2    = "#313147"
+CONFIG_PATH = ROOT / "config.json"
+
+# ── theme palettes ──────────────────────────────────────────────────────────
+THEMES = {
+    "dark": {
+        "BG":       "#1e1e2e",
+        "SURFACE":  "#2a2a3e",
+        "SURFACE2": "#313147",
+        "TEXT":     "#e2e8f0",
+        "MUTED":    "#64748b",
+        "WHITE":    "#ffffff",
+    },
+}
 ACCENT      = "#7c6af7"
 ACCENT_DARK = "#5a48d4"
 WATCH_CLR   = "#06b6d4"
@@ -45,9 +49,6 @@ SUCCESS     = "#4ade80"
 WARNING     = "#fbbf24"
 ERROR       = "#f87171"
 INFO        = "#93c5fd"
-TEXT        = "#e2e8f0"
-MUTED       = "#64748b"
-WHITE       = "#ffffff"
 
 
 class QueueHandler(logging.Handler):
@@ -63,9 +64,11 @@ class SmartOrganizerApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Smart AI File Organizer")
-        self.geometry("860x720")
-        self.minsize(720, 620)
-        self.configure(bg=BG)
+        self.geometry("920x780")
+        self.minsize(760, 650)
+
+        self._theme_name = "dark"
+        self._theme      = THEMES[self._theme_name]
 
         self._folder    = tk.StringVar()
         self._dry_run   = tk.BooleanVar(value=True)
@@ -73,7 +76,10 @@ class SmartOrganizerApp(tk.Tk):
         self._running   = False
         self._watching  = False
         self._watcher   = None
+        self._organizer = None   # current FileOrganizer instance
         self._log_queue : queue.Queue = queue.Queue()
+
+        self.configure(bg=self._theme["BG"])
 
         self._build_fonts()
         self._build_header()
@@ -81,189 +87,303 @@ class SmartOrganizerApp(tk.Tk):
         self._build_options_row()
         self._build_file_types_row()
         self._build_action_buttons()
-        self._build_log_area()
+        self._build_notebook()   # tabbed area: Log + Results
         self._build_stats_bar()
         self._setup_logging()
         self._poll_log_queue()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
+    # ── theme helpers ────────────────────────────────────────────────────────
+    def _load_theme_pref(self) -> str:
+        try:
+            with open(CONFIG_PATH) as f:
+                cfg = json.load(f)
+            return cfg.get("gui", {}).get("theme", "dark")
+        except Exception:
+            return "dark"
+
+    def _save_theme_pref(self, theme_name: str):
+        try:
+            with open(CONFIG_PATH) as f:
+                cfg = json.load(f)
+            cfg.setdefault("gui", {})["theme"] = theme_name
+            with open(CONFIG_PATH, "w") as f:
+                json.dump(cfg, f, indent=2)
+        except Exception:
+            pass
+
+    def _toggle_theme(self):
+        self._theme_name = "light" if self._theme_name == "dark" else "dark"
+        self._theme      = THEMES[self._theme_name]
+        self._save_theme_pref(self._theme_name)
+        self._apply_theme()
+        icon = "☀️" if self._theme_name == "light" else "🌙"
+        self._btn_theme.configure(text=icon)
+
+    def _apply_theme(self):
+        t = self._theme
+        self.configure(bg=t["BG"])
+        # Recursively update all widgets
+        self._update_widget_colors(self, t)
+
+    def _update_widget_colors(self, widget, t):
+        try:
+            cls = widget.winfo_class()
+            if cls in ("Frame", "LabelFrame"):
+                widget.configure(bg=t["BG"])
+            elif cls == "Label":
+                widget.configure(bg=widget.master.cget("bg") if hasattr(widget.master, 'cget') else t["BG"])
+            elif cls == "Text":
+                widget.configure(bg=t["SURFACE2"], fg=t["TEXT"])
+            elif cls == "Entry":
+                widget.configure(bg=t["SURFACE"], fg=t["TEXT"])
+        except Exception:
+            pass
+        for child in widget.winfo_children():
+            self._update_widget_colors(child, t)
+
+    # ── fonts ────────────────────────────────────────────────────────────────
     def _build_fonts(self):
         self.font_title = font.Font(family="Segoe UI", size=16, weight="bold")
         self.font_sub   = font.Font(family="Segoe UI", size=9)
         self.font_label = font.Font(family="Segoe UI", size=10)
-        self.font_btn   = font.Font(family="Segoe UI", size=9, weight="bold")
+        self.font_btn   = font.Font(family="Segoe UI", size=9,  weight="bold")
         self.font_mono  = font.Font(family="Consolas",  size=9)
         self.font_stat  = font.Font(family="Segoe UI", size=10, weight="bold")
         self.font_badge = font.Font(family="Segoe UI", size=8)
+        self.font_table = font.Font(family="Segoe UI", size=9)
 
+    # ── header ───────────────────────────────────────────────────────────────
     def _build_header(self):
-        hdr = tk.Frame(self, bg=SURFACE, pady=12)
+        t   = self._theme
+        hdr = tk.Frame(self, bg=t["SURFACE"], pady=10)
         hdr.pack(fill="x")
+
         tk.Label(hdr, text="🗂  Smart AI File Organizer",
-                 font=self.font_title, bg=SURFACE, fg=WHITE).pack()
+                 font=self.font_title, bg=t["SURFACE"], fg=t["WHITE"]).pack()
         tk.Label(hdr,
                  text="PDF · DOCX · TXT · XLSX · PPTX · CSV · EML · MSG · ZIP · Images",
-                 font=self.font_sub, bg=SURFACE, fg=MUTED).pack(pady=(2, 0))
+                 font=self.font_sub, bg=t["SURFACE"], fg=t["MUTED"]).pack(pady=(2, 0))
 
+    # ── folder row ───────────────────────────────────────────────────────────
     def _build_folder_row(self):
-        frame = tk.Frame(self, bg=BG, padx=20, pady=12)
+        t     = self._theme
+        frame = tk.Frame(self, bg=t["BG"], padx=20, pady=10)
         frame.pack(fill="x")
-        tk.Label(frame, text="Target Folder", font=self.font_label,
-                 bg=BG, fg=TEXT).grid(row=0, column=0, sticky="w", pady=(0, 4))
 
-        ef = tk.Frame(frame, bg=SURFACE, highlightthickness=1,
+        tk.Label(frame, text="Target Folder", font=self.font_label,
+                 bg=t["BG"], fg=t["TEXT"]).grid(row=0, column=0, sticky="w", pady=(0, 4))
+
+        ef = tk.Frame(frame, bg=t["SURFACE"], highlightthickness=1,
                       highlightbackground=ACCENT)
         ef.grid(row=1, column=0, sticky="ew", padx=(0, 10))
         frame.columnconfigure(0, weight=1)
 
         self._folder_entry = tk.Entry(
             ef, textvariable=self._folder,
-            font=self.font_label, bg=SURFACE, fg=TEXT,
-            insertbackground=WHITE, bd=0, relief="flat",
+            font=self.font_label, bg=t["SURFACE"], fg=t["TEXT"],
+            insertbackground=t["WHITE"], bd=0, relief="flat",
         )
         self._folder_entry.pack(fill="x", padx=8, pady=6)
 
         tk.Button(frame, text="Browse…", font=self.font_label,
-                  bg=ACCENT, fg=WHITE, activebackground=ACCENT_DARK,
-                  activeforeground=WHITE, bd=0, padx=14, pady=6,
+                  bg=ACCENT, fg="white", activebackground=ACCENT_DARK,
+                  activeforeground="white", bd=0, padx=14, pady=6,
                   cursor="hand2", relief="flat",
                   command=self._browse).grid(row=1, column=1)
 
+    # ── options row ──────────────────────────────────────────────────────────
     def _build_options_row(self):
-        frame = tk.Frame(self, bg=BG, padx=20, pady=2)
+        t     = self._theme
+        frame = tk.Frame(self, bg=t["BG"], padx=20, pady=2)
         frame.pack(fill="x")
 
         tk.Label(frame, text="Mode:", font=self.font_label,
-                 bg=BG, fg=TEXT).pack(side="left", padx=(0, 10))
+                 bg=t["BG"], fg=t["TEXT"]).pack(side="left", padx=(0, 10))
 
-        rb_style = dict(bg=BG, fg=TEXT, activebackground=BG,
-                        activeforeground=WHITE, selectcolor=SURFACE,
-                        font=self.font_label, cursor="hand2", bd=0)
+        rb = dict(bg=t["BG"], fg=t["TEXT"], activebackground=t["BG"],
+                  activeforeground=t["WHITE"], selectcolor=t["SURFACE"],
+                  font=self.font_label, cursor="hand2", bd=0)
 
         tk.Radiobutton(frame, text="🔍 Preview (safe)",
                        variable=self._dry_run, value=True,
-                       **rb_style).pack(side="left", padx=(0, 18))
-
+                       **rb).pack(side="left", padx=(0, 18))
         tk.Radiobutton(frame, text="⚡ Organise Now",
                        variable=self._dry_run, value=False,
-                       **rb_style).pack(side="left", padx=(0, 30))
+                       **rb).pack(side="left", padx=(0, 24))
+        tk.Checkbutton(frame, text="📂 Include sub-folders",
+                       variable=self._recursive,
+                       bg=t["BG"], fg=t["TEXT"], activebackground=t["BG"],
+                       activeforeground=t["WHITE"], selectcolor=t["SURFACE"],
+                       font=self.font_label, cursor="hand2", bd=0,
+                       ).pack(side="left")
 
-        tk.Checkbutton(
-            frame, text="📂 Include sub-folders",
-            variable=self._recursive,
-            bg=BG, fg=TEXT, activebackground=BG, activeforeground=WHITE,
-            selectcolor=SURFACE, font=self.font_label, cursor="hand2", bd=0,
-        ).pack(side="left")
-
+    # ── file type badges ─────────────────────────────────────────────────────
     def _build_file_types_row(self):
-        frame = tk.Frame(self, bg=BG, padx=20, pady=4)
+        t     = self._theme
+        frame = tk.Frame(self, bg=t["BG"], padx=20, pady=4)
         frame.pack(fill="x")
 
         tk.Label(frame, text="Supports:", font=self.font_badge,
-                 bg=BG, fg=MUTED).pack(side="left", padx=(0, 6))
+                 bg=t["BG"], fg=t["MUTED"]).pack(side="left", padx=(0, 6))
 
         types = [
-            ("PDF",   "#ef4444"), ("DOCX",  "#3b82f6"), ("TXT",  "#10b981"),
-            ("XLSX",  "#22c55e"), ("PPTX",  "#f97316"), ("CSV",  "#06b6d4"),
-            ("EML",   "#8b5cf6"), ("MSG",   "#ec4899"), ("ZIP",  "#64748b"),
-            ("PNG",   "#a855f7"), ("JPG",   "#d946ef"),
+            ("PDF","#ef4444"),("DOCX","#3b82f6"),("TXT","#10b981"),
+            ("XLSX","#22c55e"),("PPTX","#f97316"),("CSV","#06b6d4"),
+            ("EML","#8b5cf6"),("MSG","#ec4899"),("ZIP","#64748b"),
+            ("PNG","#a855f7"),("JPG","#d946ef"),
         ]
         for label, color in types:
-            badge = tk.Frame(frame, bg=color, padx=5, pady=2)
-            badge.pack(side="left", padx=2)
-            tk.Label(badge, text=label, font=self.font_badge,
-                     bg=color, fg=WHITE).pack()
+            b = tk.Frame(frame, bg=color, padx=5, pady=2)
+            b.pack(side="left", padx=2)
+            tk.Label(b, text=label, font=self.font_badge, bg=color, fg="white").pack()
 
+    # ── action buttons ───────────────────────────────────────────────────────
     def _build_action_buttons(self):
-        frame = tk.Frame(self, bg=BG, padx=20, pady=8)
+        t     = self._theme
+        frame = tk.Frame(self, bg=t["BG"], padx=20, pady=6)
         frame.pack(fill="x")
 
-        self._btn_run = tk.Button(
-            frame, text="▶  Run",
-            font=self.font_btn, bg=ACCENT, fg=WHITE,
-            activebackground=ACCENT_DARK, activeforeground=WHITE,
-            bd=0, padx=20, pady=8, cursor="hand2", relief="flat",
-            command=self._run,
-        )
+        btn_cfg = dict(font=self.font_btn, bd=0, pady=8, cursor="hand2", relief="flat", fg="white")
+
+        self._btn_run = tk.Button(frame, text="▶  Run", bg=ACCENT,
+                                  activebackground=ACCENT_DARK,
+                                  padx=20, command=self._run, **btn_cfg)
         self._btn_run.pack(side="left", padx=(0, 8))
 
-        self._btn_watch = tk.Button(
-            frame, text="👁  Watch",
-            font=self.font_btn, bg=WATCH_CLR, fg=WHITE,
-            activebackground=WATCH_DARK, activeforeground=WHITE,
-            bd=0, padx=20, pady=8, cursor="hand2", relief="flat",
-            command=self._toggle_watch,
-        )
+        self._btn_watch = tk.Button(frame, text="👁  Watch", bg=WATCH_CLR,
+                                    activebackground=WATCH_DARK,
+                                    padx=18, command=self._toggle_watch, **btn_cfg)
         self._btn_watch.pack(side="left", padx=(0, 8))
 
-        self._btn_undo = tk.Button(
-            frame, text="↩️  Undo",
-            font=self.font_btn, bg=UNDO_CLR, fg=WHITE,
-            activebackground=UNDO_DARK, activeforeground=WHITE,
-            bd=0, padx=20, pady=8, cursor="hand2", relief="flat",
-            command=self._undo,
-        )
+        self._btn_undo = tk.Button(frame, text="↩️  Undo", bg=UNDO_CLR,
+                                   activebackground=UNDO_DARK,
+                                   padx=18, command=self._undo, **btn_cfg)
         self._btn_undo.pack(side="left", padx=(0, 8))
 
-        tk.Button(frame, text="🗑  Clear",
-                  font=self.font_btn, bg=SURFACE2, fg=TEXT,
-                  activebackground=BG, activeforeground=WHITE,
-                  bd=0, padx=16, pady=8, cursor="hand2", relief="flat",
-                  command=self._clear_log).pack(side="left")
+        tk.Button(frame, text="🗑  Clear", bg=t["SURFACE2"],
+                  activebackground=t["BG"], fg=t["TEXT"],
+                  padx=14, command=self._clear_log, **{k:v for k,v in btn_cfg.items() if k != "fg"}
+                  ).pack(side="left")
 
         self._spinner_lbl = tk.Label(frame, text="", font=self.font_label,
-                                     bg=BG, fg=WARNING)
-        self._spinner_lbl.pack(side="left", padx=12)
+                                     bg=t["BG"], fg=WARNING)
+        self._spinner_lbl.pack(side="left", padx=10)
 
-    def _build_log_area(self):
-        frame = tk.Frame(self, bg=BG, padx=20)
-        frame.pack(fill="both", expand=True, pady=(0, 4))
+    # ── notebook (Log + Results tabs) ────────────────────────────────────────
+    def _build_notebook(self):
+        t = self._theme
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("TNotebook",        background=t["BG"],  borderwidth=0)
+        style.configure("TNotebook.Tab",    background=t["SURFACE"], foreground=t["MUTED"],
+                         padding=[12, 6],   font=("Segoe UI", 9))
+        style.map("TNotebook.Tab",
+                  background=[("selected", ACCENT)],
+                  foreground=[("selected", "white")])
 
-        tk.Label(frame, text="Activity Log", font=self.font_label,
-                 bg=BG, fg=MUTED).pack(anchor="w", pady=(0, 4))
+        outer = tk.Frame(self, bg=t["BG"], padx=20)
+        outer.pack(fill="both", expand=True, pady=(0, 4))
+
+        self._nb = ttk.Notebook(outer)
+        self._nb.pack(fill="both", expand=True)
+
+        # Tab 1 — Activity Log
+        log_frame = tk.Frame(self._nb, bg=t["SURFACE2"])
+        self._nb.add(log_frame, text="📋  Activity Log")
 
         self._log_text = scrolledtext.ScrolledText(
-            frame, font=self.font_mono, bg=SURFACE2, fg=TEXT,
-            insertbackground=WHITE, bd=0, relief="flat",
+            log_frame, font=self.font_mono, bg=t["SURFACE2"], fg=t["TEXT"],
+            insertbackground=t["WHITE"], bd=0, relief="flat",
             state="disabled", wrap="word", padx=10, pady=8,
         )
         self._log_text.pack(fill="both", expand=True)
+        for tag, fg in [("INFO", INFO), ("WARNING", WARNING), ("ERROR", ERROR),
+                        ("DEBUG", t["MUTED"]), ("SUCCESS", SUCCESS),
+                        ("WATCH", WATCH_CLR), ("UNDO", UNDO_CLR), ("TIME", t["MUTED"])]:
+            self._log_text.tag_config(tag, foreground=fg)
 
-        self._log_text.tag_config("INFO",    foreground=INFO)
-        self._log_text.tag_config("WARNING", foreground=WARNING)
-        self._log_text.tag_config("ERROR",   foreground=ERROR)
-        self._log_text.tag_config("DEBUG",   foreground=MUTED)
-        self._log_text.tag_config("SUCCESS", foreground=SUCCESS)
-        self._log_text.tag_config("WATCH",   foreground=WATCH_CLR)
-        self._log_text.tag_config("UNDO",    foreground=UNDO_CLR)
-        self._log_text.tag_config("TIME",    foreground=MUTED)
+        # Tab 2 — Results table
+        res_frame = tk.Frame(self._nb, bg=t["BG"])
+        self._nb.add(res_frame, text="📊  Results")
+        self._build_results_table(res_frame)
 
+    def _build_results_table(self, parent):
+        t = self._theme
+        cols = ("File", "Category", "Confidence", "Status")
+        style = ttk.Style()
+        style.configure("Results.Treeview",
+                        background=t["SURFACE2"], foreground=t["TEXT"],
+                        fieldbackground=t["SURFACE2"], font=("Segoe UI", 9),
+                        rowheight=26)
+        style.configure("Results.Treeview.Heading",
+                        background=t["SURFACE"], foreground=t["TEXT"],
+                        font=("Segoe UI", 9, "bold"))
+        style.map("Results.Treeview", background=[("selected", ACCENT)])
+
+        self._tree = ttk.Treeview(parent, columns=cols, show="headings",
+                                   style="Results.Treeview")
+
+        self._tree.heading("File",       text="File")
+        self._tree.heading("Category",   text="Category")
+        self._tree.heading("Confidence", text="Confidence")
+        self._tree.heading("Status",     text="Status")
+
+        self._tree.column("File",       width=300, anchor="w")
+        self._tree.column("Category",   width=120, anchor="center")
+        self._tree.column("Confidence", width=110, anchor="center")
+        self._tree.column("Status",     width=160, anchor="center")
+
+        # Colour tags for rows
+        self._tree.tag_configure("low",    foreground=WARNING)
+        self._tree.tag_configure("normal", foreground=SUCCESS)
+        self._tree.tag_configure("dup",    foreground=t["MUTED"])
+
+        sb = ttk.Scrollbar(parent, orient="vertical", command=self._tree.yview)
+        self._tree.configure(yscrollcommand=sb.set)
+
+        self._tree.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+
+        # Right-click context menu for manual override
+        self._ctx_menu = tk.Menu(self, tearoff=0, bg=t["SURFACE"], fg=t["TEXT"])
+        self._tree.bind("<Button-3>", self._show_context_menu)
+
+        # Hint label
+        hint = tk.Label(parent, text="Right-click any row to override its category",
+                        font=self.font_badge, bg=t["BG"], fg=t["MUTED"])
+        hint.pack(side="bottom", pady=4)
+
+    # ── stats bar ────────────────────────────────────────────────────────────
     def _build_stats_bar(self):
-        bar = tk.Frame(self, bg=SURFACE, pady=8)
+        t   = self._theme
+        bar = tk.Frame(self, bg=t["SURFACE"], pady=8)
         bar.pack(fill="x", side="bottom")
 
         self._stat_vars = {
             "total":  tk.StringVar(value="Files: —"),
             "moved":  tk.StringVar(value="Moved: —"),
             "dupes":  tk.StringVar(value="Duplicates: —"),
+            "low":    tk.StringVar(value="Low confidence: —"),
             "errors": tk.StringVar(value="Errors: —"),
             "mode":   tk.StringVar(value=""),
         }
         colours = {
-            "total": TEXT, "moved": SUCCESS,
-            "dupes": WARNING, "errors": ERROR, "mode": WATCH_CLR,
+            "total": t["TEXT"], "moved": SUCCESS, "dupes": WARNING,
+            "low": "#fbbf24", "errors": ERROR, "mode": WATCH_CLR,
         }
         for key, var in self._stat_vars.items():
             tk.Label(bar, textvariable=var, font=self.font_stat,
-                     bg=SURFACE, fg=colours[key], padx=14).pack(side="left")
+                     bg=t["SURFACE"], fg=colours[key], padx=12).pack(side="left")
 
+    # ── logging ──────────────────────────────────────────────────────────────
     def _setup_logging(self):
         self._q_handler = QueueHandler(self._log_queue)
         self._q_handler.setLevel(logging.DEBUG)
-        root_logger = logging.getLogger()
-        root_logger.setLevel(logging.DEBUG)
-        root_logger.handlers.clear()
-        root_logger.addHandler(self._q_handler)
+        root = logging.getLogger()
+        root.setLevel(logging.DEBUG)
+        root.handlers.clear()
+        root.addHandler(self._q_handler)
 
     def _poll_log_queue(self):
         try:
@@ -303,32 +423,22 @@ class SmartOrganizerApp(tk.Tk):
         if folder:
             self._folder.set(folder)
             files = scan_directory(folder, recursive=self._recursive.get())
-            self._append_info(
-                f"📁 Selected: {folder}  →  {len(files)} supported file(s) found."
-            )
+            self._append_info(f"📁 Selected: {folder}  →  {len(files)} file(s) found.")
 
     # ── run ──────────────────────────────────────────────────────────────────
     def _run(self):
         if self._watching:
-            messagebox.showwarning("Watch Mode Active",
-                                   "Stop Watch Mode first before running.")
+            messagebox.showwarning("Watch Mode", "Stop Watch Mode first.")
             return
         folder = self._folder.get().strip()
-        if not folder:
-            messagebox.showwarning("No folder", "Please select a folder first.")
-            return
-        if not Path(folder).is_dir():
-            messagebox.showerror("Invalid", f"Folder not found:\n{folder}")
+        if not folder or not Path(folder).is_dir():
+            messagebox.showwarning("Invalid", "Please select a valid folder.")
             return
         if self._running:
             return
 
         if not self._dry_run.get():
-            ok = messagebox.askyesno(
-                "Confirm",
-                f"Files in:\n  {folder}\n\nwill be MOVED. Continue?"
-            )
-            if not ok:
+            if not messagebox.askyesno("Confirm", f"Files in:\n  {folder}\n\nwill be MOVED. Continue?"):
                 return
 
         self._running = True
@@ -336,6 +446,7 @@ class SmartOrganizerApp(tk.Tk):
         self._btn_undo.configure(state="disabled")
         self._spinner_lbl.configure(text="Processing…")
         self._reset_stats()
+        self._clear_results()
 
         threading.Thread(
             target=self._run_organizer,
@@ -345,11 +456,11 @@ class SmartOrganizerApp(tk.Tk):
 
     def _run_organizer(self, folder, dry_run, recursive):
         try:
-            org = FileOrganizer(
+            self._organizer = FileOrganizer(
                 target_dir=folder, dry_run=dry_run,
                 recursive=recursive, show_progress=False,
             )
-            stats = org.run()
+            stats = self._organizer.run()
             self.after(0, self._on_run_complete, stats, dry_run)
         except Exception as exc:
             logging.getLogger(__name__).error("Error: %s", exc)
@@ -365,16 +476,30 @@ class SmartOrganizerApp(tk.Tk):
         self._stat_vars["total"].set(f"Files: {stats['total_files']}")
         self._stat_vars["moved"].set(f"{label}: {stats['moved']}")
         self._stat_vars["dupes"].set(f"Duplicates: {stats['duplicates']}")
+        self._stat_vars["low"].set(f"Low conf: {stats['low_confidence']}")
         self._stat_vars["errors"].set(f"Errors: {stats['errors']}")
+
+        # Populate results table
+        if self._organizer:
+            self._populate_results(self._organizer.results)
+            # Switch to results tab
+            self._nb.select(1)
 
         done = "DRY RUN complete" if dry_run else "✅ Done"
         self._append_info(f"\n{done} — {stats['moved']} file(s) {'would be moved' if dry_run else 'moved'}.")
 
+        if stats.get("low_confidence", 0) > 0:
+            self._append_info(
+                f"⚠️  {stats['low_confidence']} file(s) have LOW confidence — "
+                f"check the Results tab and right-click to correct if needed."
+            )
+
         if not dry_run and stats["moved"] > 0:
             messagebox.showinfo("Done!",
                 f"✅ Organised {stats['moved']} file(s)!\n\n"
-                f"Duplicates: {stats['duplicates']}  Errors: {stats['errors']}\n\n"
-                f"Click ↩️ Undo to reverse this.")
+                f"Low confidence : {stats['low_confidence']} (review in Results tab)\n"
+                f"Duplicates     : {stats['duplicates']}\n"
+                f"Errors         : {stats['errors']}")
 
     def _on_run_error(self, message):
         self._running = False
@@ -383,42 +508,104 @@ class SmartOrganizerApp(tk.Tk):
         self._spinner_lbl.configure(text="")
         messagebox.showerror("Error", message)
 
+    # ── results table helpers ────────────────────────────────────────────────
+    def _populate_results(self, results):
+        self._clear_results()
+        for fname, category, conf, is_low, _ in results:
+            conf_str = f"{conf:.1f}%"
+            if is_low:
+                status = "⚠️ Low confidence"
+                tag    = "low"
+            else:
+                status = "✅ Confident"
+                tag    = "normal"
+            self._tree.insert("", "end",
+                              values=(fname, category, conf_str, status),
+                              tags=(tag,))
+
+    def _clear_results(self):
+        for row in self._tree.get_children():
+            self._tree.delete(row)
+
+    # ── right-click override ─────────────────────────────────────────────────
+    def _show_context_menu(self, event):
+        row = self._tree.identify_row(event.y)
+        if not row:
+            return
+        self._tree.selection_set(row)
+        values = self._tree.item(row, "values")
+        if not values:
+            return
+
+        filename = values[0]
+        current  = values[1]
+
+        # Build submenu with all categories
+        self._ctx_menu.delete(0, "end")
+        self._ctx_menu.add_command(
+            label=f'Override category for: "{filename}"',
+            state="disabled",
+        )
+        self._ctx_menu.add_separator()
+
+        if self._organizer:
+            for cat in self._organizer.classifier.categories:
+                if cat != current:
+                    self._ctx_menu.add_command(
+                        label=f"→ {cat}",
+                        command=lambda f=filename, c=cat: self._apply_override(f, c),
+                    )
+
+        self._ctx_menu.tk_popup(event.x_root, event.y_root)
+
+    def _apply_override(self, filename: str, new_category: str):
+        if not self._organizer:
+            return
+
+        success = self._organizer.apply_override(filename, new_category)
+        if success:
+            # Update the row in the table
+            for row in self._tree.get_children():
+                vals = self._tree.item(row, "values")
+                if vals and vals[0] == filename:
+                    self._tree.item(row, values=(
+                        filename, new_category, vals[2], "✏️ Manually overridden"
+                    ), tags=("normal",))
+                    break
+            self._append_info(
+                f"✏️ Override applied: '{filename}' → {new_category} "
+                f"(model has learned from this correction)"
+            )
+            messagebox.showinfo("Override Applied",
+                                f"'{filename}' moved to {new_category}/\n\n"
+                                f"The ML model has learned from this correction.")
+        else:
+            messagebox.showerror("Override Failed",
+                                 f"Could not move '{filename}'.\n"
+                                 f"The file may have already been moved or deleted.")
+
     # ── undo ─────────────────────────────────────────────────────────────────
     def _undo(self):
         folder = self._folder.get().strip()
-        if not folder:
-            messagebox.showwarning("No folder", "Please select a folder first.")
-            return
-        if not Path(folder).is_dir():
-            messagebox.showerror("Invalid", f"Folder not found:\n{folder}")
+        if not folder or not Path(folder).is_dir():
+            messagebox.showwarning("Invalid", "Please select a valid folder.")
             return
         if self._running or self._watching:
             messagebox.showwarning("Busy", "Wait for current operation to finish.")
             return
-
         log_path = Path(folder) / "organizer.log"
         if not log_path.exists():
-            messagebox.showwarning("No Log",
-                                   "No organizer.log found in this folder.\n"
-                                   "Nothing to undo.")
+            messagebox.showwarning("No Log", "No organizer.log found. Nothing to undo.")
             return
-
-        ok = messagebox.askyesno(
-            "Confirm Undo",
-            "This will restore all files moved in the last run back to their original location.\n\nContinue?"
-        )
-        if not ok:
+        if not messagebox.askyesno("Confirm Undo",
+                                   "Restore all files to their original locations?"):
             return
 
         self._btn_undo.configure(state="disabled", text="⏳ Undoing…")
         self._btn_run.configure(state="disabled")
-        self._append_undo(f"\n↩️  Undo started — reading log from: {folder}\n")
+        self._append_undo(f"\n↩️  Undo started — {folder}\n")
 
-        threading.Thread(
-            target=self._run_undo,
-            args=(folder,),
-            daemon=True,
-        ).start()
+        threading.Thread(target=self._run_undo, args=(folder,), daemon=True).start()
 
     def _run_undo(self, folder):
         try:
@@ -431,13 +618,10 @@ class SmartOrganizerApp(tk.Tk):
     def _on_undo_complete(self, stats):
         self._btn_undo.configure(state="normal", text="↩️  Undo")
         self._btn_run.configure(state="normal")
-        self._append_undo(
-            f"\n↩️  Undo complete — {stats['restored']} file(s) restored."
-        )
+        self._append_undo(f"\n↩️  Undo complete — {stats['restored']} file(s) restored.")
         messagebox.showinfo("Undo Complete",
-                            f"↩️ Restored {stats['restored']} file(s)\n"
-                            f"Skipped : {stats['skipped']}\n"
-                            f"Errors  : {stats['errors']}")
+                            f"↩️ Restored: {stats['restored']}\n"
+                            f"Skipped : {stats['skipped']}\nErrors: {stats['errors']}")
 
     # ── watch mode ───────────────────────────────────────────────────────────
     def _toggle_watch(self):
@@ -449,26 +633,16 @@ class SmartOrganizerApp(tk.Tk):
     def _start_watch(self):
         folder = self._folder.get().strip()
         if not folder or not Path(folder).is_dir():
-            messagebox.showwarning("Invalid", "Please select a valid folder first.")
+            messagebox.showwarning("Invalid", "Please select a valid folder.")
             return
-        if self._running:
-            return
-
         self._watching = True
         self._btn_watch.configure(text="⛔ Stop", bg=ERROR, activebackground="#dc2626")
         self._btn_run.configure(state="disabled")
         self._btn_undo.configure(state="disabled")
         self._stat_vars["mode"].set("👁 WATCH MODE ACTIVE")
-        self._append_watch(
-            f"\n👁  Watch Mode started — monitoring: {folder}\n"
-            f"   Drop files in and they'll be organised automatically.\n"
-        )
-
-        threading.Thread(
-            target=self._run_watcher,
-            args=(folder, self._recursive.get()),
-            daemon=True,
-        ).start()
+        self._append_watch(f"\n👁  Watch Mode — monitoring: {folder}\n")
+        threading.Thread(target=self._run_watcher,
+                         args=(folder, self._recursive.get()), daemon=True).start()
 
     def _run_watcher(self, folder, recursive):
         try:
@@ -513,9 +687,9 @@ class SmartOrganizerApp(tk.Tk):
         self._log_text.configure(state="disabled")
 
     def _reset_stats(self):
-        for k, label in [("total","Files: …"),("moved","Moved: …"),
-                          ("dupes","Duplicates: …"),("errors","Errors: …")]:
-            self._stat_vars[k].set(label)
+        for k, v in [("total","Files: …"),("moved","Moved: …"),
+                     ("dupes","Duplicates: …"),("low","Low conf: …"),("errors","Errors: …")]:
+            self._stat_vars[k].set(v)
 
     def _on_close(self):
         if self._watching:

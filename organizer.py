@@ -1,20 +1,17 @@
 """
 organizer.py
 ------------
-Orchestrates the full file-organising pipeline:
+Orchestrates the full file-organising pipeline.
 
-  1. Scan directory (optionally recursive) for supported files
-  2. Check for duplicates — skip if found
-  3. Extract text from each file
-  4. Classify text into a category
-  5. Move file (or simulate in dry-run mode)
-  6. Show progress bar (tqdm)
-  7. Return run statistics
+Level 1 additions:
+  - Records confidence score for every file
+  - Flags low-confidence files in stats and log
+  - Stores file→text map so GUI can offer manual override
 """
 
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Tuple
 
 from classifier import DocumentClassifier
 from duplicate_detector import DuplicateDetector
@@ -34,10 +31,10 @@ class FileOrganizer:
 
     Parameters
     ----------
-    target_dir : str   — folder to scan and organise
-    dry_run    : bool  — if True, simulate without moving files
-    recursive  : bool  — if True, scan sub-folders too
-    show_progress : bool — show tqdm progress bar (default True in CLI)
+    target_dir    : folder to scan and organise
+    dry_run       : simulate without moving files
+    recursive     : scan sub-folders too
+    show_progress : show tqdm progress bar (CLI)
     """
 
     def __init__(
@@ -47,21 +44,28 @@ class FileOrganizer:
         recursive: bool = False,
         show_progress: bool = False,
     ):
-        self.target_dir     = str(Path(target_dir).resolve())
-        self.dry_run        = dry_run
-        self.recursive      = recursive
-        self.show_progress  = show_progress
+        self.target_dir    = str(Path(target_dir).resolve())
+        self.dry_run       = dry_run
+        self.recursive     = recursive
+        self.show_progress = show_progress
 
         self.classifier         = DocumentClassifier()
         self.duplicate_detector = DuplicateDetector()
 
         self._stats: Dict = {
-            "total_files": 0,
-            "moved":       0,
-            "duplicates":  0,
-            "errors":      0,
-            "by_category": {cat: 0 for cat in self.classifier.categories},
+            "total_files":    0,
+            "moved":          0,
+            "duplicates":     0,
+            "errors":         0,
+            "low_confidence": 0,
+            "by_category":    {cat: 0 for cat in self.classifier.categories},
         }
+
+        # Map filename → extracted text (used by GUI for manual override)
+        self._file_texts: Dict[str, str] = {}
+
+        # Results list: (filename, category, confidence_pct, is_low, dest_path)
+        self.results: List[Tuple[str, str, float, bool, str]] = []
 
     # ── public ──────────────────────────────────────────────────────────────
     def run(self) -> Dict:
@@ -90,19 +94,15 @@ class FileOrganizer:
             logger.warning("No supported files found. Nothing to do.")
             return self._stats
 
-        # ── progress bar (tqdm) ─────────────────────────────────────────────
         if self.show_progress:
             try:
                 from tqdm import tqdm
                 iterator = tqdm(
-                    files,
-                    desc="Organising",
-                    unit="file",
-                    bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} files [{elapsed}]",
+                    files, desc="Organising", unit="file",
+                    bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]",
                     colour="cyan",
                 )
             except ImportError:
-                logger.warning("tqdm not installed — no progress bar. Run: pip install tqdm")
                 iterator = files
         else:
             iterator = files
@@ -112,11 +112,59 @@ class FileOrganizer:
 
         logger.info(sep)
         logger.info(
-            "Run complete (%s). Moved: %d | Duplicates: %d | Errors: %d",
-            mode, self._stats["moved"], self._stats["duplicates"], self._stats["errors"],
+            "Run complete (%s). Moved: %d | Duplicates: %d | Low confidence: %d | Errors: %d",
+            mode, self._stats["moved"], self._stats["duplicates"],
+            self._stats["low_confidence"], self._stats["errors"],
         )
         logger.info(sep)
         return self._stats
+
+    def apply_override(self, filename: str, correct_category: str) -> bool:
+        """
+        Apply a manual category override for a file.
+        Teaches the classifier about the correction for future predictions.
+
+        Returns True if override was applied successfully.
+        """
+        # Find the result entry for this file
+        for i, (fname, old_cat, conf, is_low, dest) in enumerate(self.results):
+            if fname == filename:
+                # Move file from old category to new
+                old_path = Path(dest)
+                new_dir  = Path(self.target_dir) / correct_category
+
+                if not old_path.exists():
+                    logger.warning("Override: file not found at %s", old_path)
+                    return False
+
+                try:
+                    new_dir.mkdir(parents=True, exist_ok=True)
+                    new_path = new_dir / old_path.name
+                    counter  = 1
+                    while new_path.exists():
+                        new_path = new_dir / f"{old_path.stem}_{counter}{old_path.suffix}"
+                        counter += 1
+                    old_path.rename(new_path)
+
+                    # Update results record
+                    self.results[i] = (fname, correct_category, conf, False, str(new_path))
+                    logger.info(
+                        "Override applied: '%s' → %s/ (was %s/)",
+                        fname, correct_category, old_cat,
+                    )
+
+                    # Teach the classifier
+                    text = self._file_texts.get(fname, "")
+                    if text:
+                        self.classifier.add_correction(text, correct_category)
+
+                    return True
+                except Exception as exc:
+                    logger.error("Override failed for '%s': %s", filename, exc)
+                    return False
+
+        logger.warning("Override: file '%s' not found in results.", filename)
+        return False
 
     # ── internal ────────────────────────────────────────────────────────────
     def _process_file(self, filepath: str) -> None:
@@ -144,22 +192,35 @@ class FileOrganizer:
         if not text.strip():
             logger.warning("No text extracted from '%s'; classifying as 'Other'.", filename)
 
-        # Classification
+        # Store text for potential override
+        self._file_texts[filename] = text
+
+        # Classification with confidence
         try:
-            category = self.classifier.predict(text)
+            category, confidence_pct, is_low = self.classifier.predict_with_confidence(text)
         except Exception as exc:
             logger.error("Classification error for '%s': %s", filename, exc)
-            category = "Other"
+            category, confidence_pct, is_low = "Other", 0.0, True
 
-        logger.info("  ↳ Category: %s", category)
-        dest_dir = str(Path(self.target_dir) / category)
+        # Log with confidence badge
+        if is_low:
+            logger.warning(
+                "  ↳ Category: %s (%.1f%% — LOW CONFIDENCE ⚠️ review recommended)",
+                category, confidence_pct,
+            )
+            self._stats["low_confidence"] += 1
+        else:
+            logger.info("  ↳ Category: %s (%.1f%% confident)", category, confidence_pct)
+
+        dest_dir  = str(Path(self.target_dir) / category)
+        dest_path = str(Path(dest_dir) / filename)
 
         # Move or simulate
         if self.dry_run:
             logger.info("  [DRY RUN] '%s' → %s/", filename, category)
         else:
             try:
-                safe_move(filepath, dest_dir)
+                dest_path = safe_move(filepath, dest_dir)
             except Exception as exc:
                 logger.error("Move failed for '%s': %s", filename, exc)
                 self._stats["errors"] += 1
@@ -169,3 +230,6 @@ class FileOrganizer:
         self._stats["by_category"][category] = (
             self._stats["by_category"].get(category, 0) + 1
         )
+
+        # Store result for potential override
+        self.results.append((filename, category, confidence_pct, is_low, dest_path))

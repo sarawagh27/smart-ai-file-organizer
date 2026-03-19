@@ -1,6 +1,14 @@
 {
-  "categories": ["Finance", "Resume", "AI", "Research", "Personal", "Legal", "Medical", "Other"],
-
+  "categories": [
+    "Finance",
+    "Resume",
+    "AI",
+    "Research",
+    "Personal",
+    "Legal",
+    "Medical",
+    "Other"
+  ],
   "training_data": {
     "Finance": [
       "invoice payment receipt bank account balance transaction credit debit tax revenue expenses budget quarterly earnings profit loss financial statement",
@@ -81,16 +89,30 @@
       "email newsletter subject body greeting signature unsubscribe list campaign marketing promotion"
     ]
   },
-
   "classifier": {
     "confidence_threshold": 0.18,
-    "ngram_range": [1, 2],
+    "ngram_range": [
+      1,
+      2
+    ],
     "naive_bayes_alpha": 0.4
   },
-
   "organizer": {
-    "supported_extensions": [".pdf", ".txt", ".docx", ".xlsx", ".pptx", ".csv", ".png", ".jpg", ".jpeg"],
+    "supported_extensions": [
+      ".pdf",
+      ".txt",
+      ".docx",
+      ".xlsx",
+      ".pptx",
+      ".csv",
+      ".png",
+      ".jpg",
+      ".jpeg"
+    ],
     "fallback_category": "Other",
     "recursive": false
+  },
+  "gui": {
+    "theme": "dark"
   }
 }
