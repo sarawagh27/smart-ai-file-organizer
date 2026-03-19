@@ -3,7 +3,7 @@ PyPDF2>=3.0.0
 python-docx>=1.1.0
 scikit-learn>=1.4.0
 
-# Level 2 — Better AI model (downloads ~90MB model on first run)
+# Level 2 — Better AI model
 sentence-transformers>=2.7.0
 
 # Level 2 — Language detection
@@ -21,8 +21,17 @@ watchdog>=4.0.0
 # Progress bar
 tqdm>=4.66.0
 
+# Level 3 — Web app & API
+flask>=3.0.0
+
+# Level 3 — Desktop installer (run python build.py to create .exe)
+# pyinstaller>=6.0.0
+
 # Optional: OCR for images (requires Tesseract installed separately)
 # pytesseract>=0.3.10
 
 # Testing
 pytest>=8.0.0
+
+# Level 3 — Statistics Dashboard
+matplotlib>=3.8.0

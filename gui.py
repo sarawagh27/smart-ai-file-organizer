@@ -22,6 +22,7 @@ ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 
 from organizer import FileOrganizer
+from stats import StatsDashboard
 from undo import undo_moves
 from utils import scan_directory
 from watcher import FolderWatcher
@@ -690,6 +691,17 @@ class SmartOrganizerApp(tk.Tk):
         for k, v in [("total","Files: …"),("moved","Moved: …"),
                      ("dupes","Duplicates: …"),("low","Low conf: …"),("errors","Errors: …")]:
             self._stat_vars[k].set(v)
+
+    def _show_stats(self):
+        folder = self._folder.get().strip()
+        if not folder or not Path(folder).is_dir():
+            messagebox.showwarning("No folder", "Please select a folder first.")
+            return
+        log_path = str(Path(folder) / "organizer.log")
+        if not Path(log_path).exists():
+            messagebox.showwarning("No Log", "No organizer.log found. Run the organiser first.")
+            return
+        StatsDashboard(self, log_path=log_path)
 
     def _on_close(self):
         if self._watching:

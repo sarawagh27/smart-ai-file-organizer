@@ -36,7 +36,8 @@ No cloud. No API keys. Runs entirely on your machine.
 - 🛡️ **Collision-safe moves** — appends counter on name conflict (e.g. `report_1.pdf`)
 - ⚙️ **Config-driven** — customise categories in `config.json`, no code needed
 - 🖼️ **Image OCR** via Tesseract (optional)
-- 📝 **Full operation log** saved to `organizer.log`
+- 📝 **Full operation log** saved to 
+- 📊 **Statistics dashboard** — pie chart and run history built into the GUI`organizer.log`
 
 ---
 
@@ -208,9 +209,7 @@ Expected: **40 passed**
 - [x] ~~Undo feature~~ ✅
 - [x] ~~Progress bar~~ ✅
 - [x] ~~More file types (EML, MSG, ZIP)~~ ✅
-- [ ] **Email notifications** after organise completes
-- [ ] **Statistics dashboard** — charts of file history
-- [ ] **Scheduled auto-run** — organise on a timer
+- [x] ~~Statistics dashboard~~ ✅
 
 ---
 
