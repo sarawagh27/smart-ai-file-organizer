@@ -50,6 +50,10 @@ def parse_args() -> argparse.Namespace:
         help="Undo the last organise run — restore files to original locations.",
     )
     parser.add_argument(
+        "--smart-rename", action="store_true",
+        help="Use AI to rename files based on their content (requires ANTHROPIC_API_KEY).",
+    )
+    parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="Enable DEBUG-level logging.",
     )
@@ -93,11 +97,22 @@ def main() -> int:
     if args.dry_run:
         print("⚠️  DRY RUN — no files will be moved.\n")
 
+    # Load API key from config or environment
+    import json as _json
+    cfg = {}
+    try:
+        cfg = _json.loads((target.parent / "config.json").read_text())
+    except Exception:
+        pass
+    api_key = cfg.get("smart_rename", {}).get("api_key", "")
+
     organizer = FileOrganizer(
         target_dir=str(target),
         dry_run=args.dry_run,
         recursive=args.recursive,
-        show_progress=True,     # show tqdm bar in CLI
+        show_progress=True,
+        smart_rename=getattr(args, "smart_rename", False),
+        api_key=api_key,
     )
     stats = organizer.run()
     print_summary(stats, dry_run=args.dry_run)

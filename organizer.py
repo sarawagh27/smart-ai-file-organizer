@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from classifier import DocumentClassifier
+from renamer import SmartRenamer
 from duplicate_detector import DuplicateDetector
 from text_extractor import extract_text
 from utils import (
@@ -43,6 +44,8 @@ class FileOrganizer:
         dry_run: bool = False,
         recursive: bool = False,
         show_progress: bool = False,
+        smart_rename: bool = False,
+        api_key: str = "",
     ):
         self.target_dir    = str(Path(target_dir).resolve())
         self.dry_run       = dry_run
@@ -51,6 +54,7 @@ class FileOrganizer:
 
         self.classifier         = DocumentClassifier()
         self.duplicate_detector = DuplicateDetector()
+        self.renamer            = SmartRenamer(api_key=api_key, enabled=smart_rename)
 
         self._stats: Dict = {
             "total_files":    0,
@@ -211,6 +215,17 @@ class FileOrganizer:
             self._stats["low_confidence"] += 1
         else:
             logger.info("  ↳ Category: %s (%.1f%% confident)", category, confidence_pct)
+
+        # Smart rename
+        new_filename = self.renamer.rename(filename, text)
+        if new_filename != filename and not self.dry_run:
+            try:
+                new_filepath = str(Path(filepath).parent / new_filename)
+                Path(filepath).rename(new_filepath)
+                filepath = new_filepath
+                filename = new_filename
+            except Exception as exc:
+                logger.warning("Rename failed: %s", exc)
 
         dest_dir  = str(Path(self.target_dir) / category)
         dest_path = str(Path(dest_dir) / filename)

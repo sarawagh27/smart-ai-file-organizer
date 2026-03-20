@@ -35,3 +35,6 @@ pytest>=8.0.0
 
 # Level 3 — Statistics Dashboard
 matplotlib>=3.8.0
+
+# AI Smart Rename (uses NVIDIA free API)
+openai>=1.0.0

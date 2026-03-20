@@ -73,6 +73,7 @@ class SmartOrganizerApp(tk.Tk):
         self._folder    = tk.StringVar()
         self._dry_run   = tk.BooleanVar(value=True)
         self._recursive = tk.BooleanVar(value=False)
+        self._smart_rename = tk.BooleanVar(value=False)
         self._running   = False
         self._watching  = False
         self._watcher   = None
@@ -215,6 +216,13 @@ class SmartOrganizerApp(tk.Tk):
                        variable=self._recursive,
                        bg=t["BG"], fg=t["TEXT"], activebackground=t["BG"],
                        activeforeground=t["WHITE"], selectcolor=t["SURFACE"],
+                       font=self.font_label, cursor="hand2", bd=0,
+                       ).pack(side="left", padx=(0, 16))
+
+        tk.Checkbutton(frame, text="✏️ AI Smart Rename",
+                       variable=self._smart_rename,
+                       bg=t["BG"], fg="#fbbf24", activebackground=t["BG"],
+                       activeforeground="#fbbf24", selectcolor=t["SURFACE"],
                        font=self.font_label, cursor="hand2", bd=0,
                        ).pack(side="left")
 
@@ -457,9 +465,21 @@ class SmartOrganizerApp(tk.Tk):
 
     def _run_organizer(self, folder, dry_run, recursive):
         try:
+            # Load API key from config
+            import json
+            from pathlib import Path as _Path
+            cfg = {}
+            try:
+                cfg = json.loads((_Path(__file__).parent / "config.json").read_text())
+            except Exception:
+                pass
+            api_key = cfg.get("smart_rename", {}).get("api_key", "")
+
             self._organizer = FileOrganizer(
                 target_dir=folder, dry_run=dry_run,
                 recursive=recursive, show_progress=False,
+                smart_rename=self._smart_rename.get(),
+                api_key=api_key,
             )
             stats = self._organizer.run()
             self.after(0, self._on_run_complete, stats, dry_run)

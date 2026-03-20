@@ -47,3 +47,6 @@ desktop.ini
 *.tar.gz
 *.tmp
 *.bak
+
+# ── API Keys & sensitive config ───────────────────────
+config.json

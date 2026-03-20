@@ -105,6 +105,9 @@
       ".xlsx",
       ".pptx",
       ".csv",
+      ".eml",
+      ".msg",
+      ".zip",
       ".png",
       ".jpg",
       ".jpeg"
@@ -112,7 +115,10 @@
     "fallback_category": "Other",
     "recursive": false
   },
-  "gui": {
-    "theme": "dark"
-  }
+  "smart_rename": {
+    "enabled": false,
+    "api_key": "nvapi-your-key-here",
+    "note": "Get your FREE API key from https://build.nvidia.com/models \u2014 click any model then Get API Key"
+  },
+  "corrections": []
 }
