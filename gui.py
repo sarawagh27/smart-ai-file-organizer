@@ -373,11 +373,11 @@ class SmartOrganizerApp(tk.Tk):
         preview_frame.pack(side="bottom", fill="x", padx=0)
 
         tk.Label(preview_frame, text="📄 Content Preview",
-                 font=self.font_badge, bg=t["SURFACE2"], fg=MUTED).pack(anchor="w", padx=10)
+                 font=self.font_badge, bg=t["SURFACE2"], fg=t["MUTED"]).pack(anchor="w", padx=10)
 
         self._preview_lbl = tk.Label(
             preview_frame, text="Click any row to preview file content…",
-            font=self.font_mono, bg=t["SURFACE2"], fg=MUTED,
+            font=self.font_mono, bg=t["SURFACE2"], fg=t["MUTED"],
             wraplength=700, justify="left", anchor="w",
         )
         self._preview_lbl.pack(fill="x", padx=10, pady=(2, 6))
@@ -804,21 +804,28 @@ class SmartOrganizerApp(tk.Tk):
         if not values:
             return
 
-        filename = values[0]
-        if not self._organizer:
-            return
+        filename, category, confidence, status = values[0], values[1], values[2], values[3]
+        t = self._theme
 
-        text = self._organizer._file_texts.get(filename, "")
-        if not text:
+        # Try to get content preview
+        text = ""
+        if self._organizer:
+            text = self._organizer._file_texts.get(filename, "")
+
+        if text and text.strip():
+            preview = " ".join(text.split())[:300]
+            if len(text.strip()) > 300:
+                preview += "…"
             self._preview_lbl.configure(
-                text=f"No preview available for '{filename}'", fg=MUTED)
-            return
-
-        preview = " ".join(text.split())[:250]
-        if len(text.strip()) > 250:
-            preview += "…"
-
-        self._preview_lbl.configure(text=preview, fg=TEXT)
+                text=f"{preview}",
+                fg=t["TEXT"]
+            )
+        else:
+            # Show what we know from results
+            self._preview_lbl.configure(
+                text=f"File: {filename}  |  Category: {category}  |  Confidence: {confidence}  |  {status}",
+                fg=t["MUTED"]
+            )
 
     def _hide_tooltip(self):
         pass
