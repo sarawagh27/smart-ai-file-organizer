@@ -389,7 +389,7 @@ class SmartOrganizerApp(tk.Tk):
         tk.Label(bottom, text="Right-click any row to override its category",
                  font=self.font_badge, bg=t["BG"], fg=t["MUTED"]).pack(side="left", padx=10)
 
-        tk.Button(bottom, text="📥 Export CSV", font=self.font_badge,
+        tk.Button(bottom, text="📥 Export Excel", font=self.font_badge,
                   bg=t["SURFACE"], fg=t["TEXT"], activebackground=ACCENT,
                   activeforeground="white", bd=0, padx=10, pady=4,
                   cursor="hand2", relief="flat",
@@ -767,31 +767,107 @@ class SmartOrganizerApp(tk.Tk):
         self.bind("<Control-k>", lambda e: self._clear_log())
         self.bind("<Control-K>", lambda e: self._clear_log())
 
-    # ── Feature 2: Export CSV ────────────────────────────────────────────────
+    # ── Feature 2: Export Excel ──────────────────────────────────────────────
     def _export_csv(self):
         if not self._organizer or not self._organizer.results:
             messagebox.showwarning("No Results", "Run the organiser first to get results.")
             return
 
         filepath = filedialog.asksaveasfilename(
-            title="Export Results as CSV",
-            defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-            initialfile="organizer_results.csv",
+            title="Export Results as Excel",
+            defaultextension=".xlsx",
+            filetypes=[("Excel files", "*.xlsx"), ("CSV files", "*.csv"), ("All files", "*.*")],
+            initialfile="organizer_results.xlsx",
         )
         if not filepath:
             return
 
         try:
-            with open(filepath, "w", newline="", encoding="utf-8") as f:
+            from openpyxl import Workbook
+            from openpyxl.styles import (Font, PatternFill, Alignment,
+                                          Border, Side)
+            from openpyxl.utils import get_column_letter
+
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Organizer Results"
+
+            # ── Header style ────────────────────────────────────────────────
+            hdr_fill = PatternFill("solid", start_color="2a2a3e")
+            hdr_font = Font(bold=True, color="e2e8f0", name="Segoe UI", size=10)
+            hdr_align = Alignment(horizontal="center", vertical="center")
+            thin = Side(style="thin", color="3a3a5e")
+            border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+            headers = ["#", "File Name", "Category", "Confidence (%)", "Status"]
+            col_widths = [5, 45, 16, 18, 18]
+
+            for col, (h, w) in enumerate(zip(headers, col_widths), 1):
+                cell = ws.cell(row=1, column=col, value=h)
+                cell.font    = hdr_font
+                cell.fill    = hdr_fill
+                cell.alignment = hdr_align
+                cell.border  = border
+                ws.column_dimensions[get_column_letter(col)].width = w
+
+            ws.row_dimensions[1].height = 22
+
+            # ── Category colours ─────────────────────────────────────────────
+            cat_colors = {
+                "Finance":  "dcfce7", "Resume":   "dbeafe",
+                "AI":       "f0fdf4", "Research": "fef9c3",
+                "Personal": "fae8ff", "Legal":    "fee2e2",
+                "Medical":  "cffafe", "Other":    "f1f5f9",
+            }
+
+            # ── Data rows ────────────────────────────────────────────────────
+            for i, (fname, category, conf, is_low, dest) in                     enumerate(self._organizer.results, 1):
+
+                row = i + 1
+                status = "⚠ Low confidence" if is_low else "✅ Confident"
+                bg = cat_colors.get(category, "ffffff")
+                row_fill = PatternFill("solid", start_color=bg)
+                row_font = Font(name="Segoe UI", size=9,
+                                color="92400e" if is_low else "14532d")
+
+                values = [i, fname, category, round(conf, 1), status]
+                aligns = ["center", "left", "center", "center", "center"]
+
+                for col, (val, aln) in enumerate(zip(values, aligns), 1):
+                    cell = ws.cell(row=row, column=col, value=val)
+                    cell.fill      = row_fill
+                    cell.font      = row_font
+                    cell.alignment = Alignment(horizontal=aln, vertical="center")
+                    cell.border    = border
+
+                ws.row_dimensions[row].height = 18
+
+            # ── Summary row ──────────────────────────────────────────────────
+            total_rows = len(self._organizer.results)
+            sum_row = total_rows + 2
+            ws.cell(row=sum_row, column=1, value="Total").font = Font(bold=True, name="Segoe UI", size=9)
+            ws.cell(row=sum_row, column=2, value=f"=COUNTA(B2:B{total_rows+1})").font = Font(bold=True, name="Segoe UI", size=9)
+            ws.cell(row=sum_row, column=4, value=f"=AVERAGE(D2:D{total_rows+1})").number_format = "0.0"
+            ws.cell(row=sum_row, column=4).font = Font(bold=True, name="Segoe UI", size=9)
+
+            # ── Freeze header ─────────────────────────────────────────────────
+            ws.freeze_panes = "A2"
+
+            wb.save(filepath)
+            self._append_info(f"\n📥 Exported {total_rows} results → {filepath}")
+            messagebox.showinfo("Exported!", f"✅ Saved as Excel:\n{filepath}")
+
+        except ImportError:
+            # Fallback to CSV if openpyxl not available
+            import csv
+            csv_path = filepath.replace(".xlsx", ".csv")
+            with open(csv_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow(["File", "Category", "Confidence (%)", "Status"])
                 for fname, category, conf, is_low, dest in self._organizer.results:
-                    status = "Low confidence" if is_low else "Confident"
-                    writer.writerow([fname, category, f"{conf:.1f}", status])
-
-            self._append_info(f"\n📥 Exported {len(self._organizer.results)} results → {filepath}")
-            messagebox.showinfo("Exported!", f"Results saved to:\n{filepath}")
+                    writer.writerow([fname, category, f"{conf:.1f}",
+                                     "Low confidence" if is_low else "Confident"])
+            messagebox.showinfo("Exported!", f"Saved as CSV:\n{csv_path}")
         except Exception as exc:
             messagebox.showerror("Export Failed", str(exc))
 
