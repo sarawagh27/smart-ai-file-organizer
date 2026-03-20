@@ -22,6 +22,7 @@ ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 
 from organizer import FileOrganizer
+from category_manager import CategoryManager
 from undo import undo_moves
 from utils import scan_directory
 from watcher import FolderWatcher
@@ -274,6 +275,10 @@ class SmartOrganizerApp(tk.Tk):
                   padx=14, command=self._clear_log, **{k:v for k,v in btn_cfg.items() if k != "fg"}
                   ).pack(side="left", padx=(0, 8))
 
+        tk.Button(frame, text="⚙️  Categories", bg="#854d0e",
+                  activebackground="#713f12", fg="#ffffff",
+                  padx=14, command=self._open_categories, **{k:v for k,v in btn_cfg.items() if k != "fg"}
+                  ).pack(side="left", padx=(0, 8))
 
         self._spinner_lbl = tk.Label(frame, text="", font=self.font_label,
                                      bg=t["BG"], fg=WARNING)
@@ -712,6 +717,17 @@ class SmartOrganizerApp(tk.Tk):
                      ("dupes","Duplicates: …"),("low","Low conf: …"),("errors","Errors: …")]:
             self._stat_vars[k].set(v)
 
+
+    def _open_categories(self):
+        cfg = CONFIG_PATH
+        if not cfg.exists():
+            # Fall back to config.example.json if config.json doesn't exist
+            cfg = ROOT / "config.example.json"
+        if not cfg.exists():
+            messagebox.showwarning("No Config",
+                "config.json not found.\nCopy config.example.json to config.json first.")
+            return
+        CategoryManager(self, config_path=str(cfg))
 
     def _on_close(self):
         if self._watching:
