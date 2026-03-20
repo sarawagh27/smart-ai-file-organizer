@@ -8,36 +8,36 @@
 </p>
 
 <p align="center">
-  <b>Automatically classify and organise your files using Machine Learning — no manual sorting needed.</b>
+  <b>Automatically classify, rename, and organise your files using Machine Learning — no manual sorting needed.</b>
 </p>
 
 ---
 
 ## 📌 Overview
 
-**Smart AI File Organizer** scans a folder, reads the content of each document, and uses a **TF-IDF + Naive Bayes** machine learning pipeline to predict its category. Files are then automatically moved into labelled sub-folders. Duplicate files are detected via **MD5 hashing** and safely skipped.
-
-No cloud. No API keys. Runs entirely on your machine.
+**Smart AI File Organizer** scans a folder, reads the content of each document, and uses a **sentence-transformers + Naive Bayes** machine learning pipeline to predict its category. Files are automatically moved into labelled sub-folders. An optional **AI Smart Rename** feature uses the NVIDIA free API to generate meaningful filenames from document content.
 
 ---
 
 ## ✨ Features
 
 - 📄 Supports **PDF, DOCX, TXT, XLSX, PPTX, CSV, EML, MSG, ZIP, PNG, JPG**
-- 🤖 **ML-based classification** — TF-IDF vectoriser + Multinomial Naive Bayes
+- 🤖 **ML-based classification** — sentence-transformers + Naive Bayes (auto-selects best model)
+- 🏷️ **AI Smart Rename** — renames files based on content using NVIDIA free API
+- 🌐 **Language detection** — detects document language automatically
 - 🗂️ **8 categories** — `Finance` · `Resume` · `AI` · `Research` · `Personal` · `Legal` · `Medical` · `Other`
 - 🖥️ **Desktop GUI** — dark-themed Tkinter app with live activity log
 - 👁️ **Watch Mode** — monitors folder in real-time, organises files as they arrive
-- ↩️ **Undo** — restore all files to their original locations with one click
-- 📊 **Progress bar** — visual progress when processing large folders (CLI)
+- ↩️ **Undo** — restore all files to original locations with one click
+- 📊 **Confidence scores** — shows how confident the model is for each file
+- ✏️ **Manual override** — right-click any result to correct its category
 - 🔍 **Dry Run (Preview)** — see what would happen before moving anything
 - 📂 **Recursive scanning** — optionally organise files inside sub-folders
 - 🔁 **Duplicate detection** via MD5 hashing — duplicates are skipped, never deleted
-- 🛡️ **Collision-safe moves** — appends counter on name conflict (e.g. `report_1.pdf`)
-- ⚙️ **Config-driven** — customise categories in `config.json`, no code needed
+- 🛡️ **Collision-safe moves** — appends counter on name conflict
+- ⚙️ **Config-driven** — customise categories in `config.example.json`, no code needed
 - 🖼️ **Image OCR** via Tesseract (optional)
-- 📝 **Full operation log** saved to 
-- 📊 **Statistics dashboard** — pie chart and run history built into the GUI`organizer.log`
+- 📝 **Full operation log** saved to `organizer.log`
 
 ---
 
@@ -46,9 +46,10 @@ No cloud. No API keys. Runs entirely on your machine.
 | Layer | Technology |
 |---|---|
 | Language | Python 3.10+ |
-| ML Pipeline | scikit-learn |
-| Vectorisation | TF-IDF (`TfidfVectorizer`) |
-| Classifier | Multinomial Naive Bayes |
+| ML Model | sentence-transformers (`all-MiniLM-L6-v2`) |
+| Fallback Classifier | TF-IDF + Multinomial Naive Bayes |
+| AI Smart Rename | NVIDIA NIM API (free) — `meta/llama-3.1-8b-instruct` |
+| Language Detection | langdetect |
 | PDF | PyPDF2 |
 | DOCX | python-docx |
 | XLSX | openpyxl |
@@ -71,13 +72,14 @@ smart-ai-file-organizer/
 ├── main.py                  # CLI entry point
 ├── gui.py                   # Desktop GUI (Tkinter)
 ├── organizer.py             # Pipeline orchestrator
+├── classifier.py            # ML classifier (sentence-transformers / Naive Bayes)
+├── renamer.py               # AI Smart Rename (NVIDIA API)
 ├── watcher.py               # Watch Mode (real-time monitoring)
 ├── undo.py                  # Undo last organise run
-├── classifier.py            # TF-IDF + Naive Bayes classifier
 ├── duplicate_detector.py    # MD5-based duplicate detection
 ├── text_extractor.py        # Text extraction for all file types
 ├── utils.py                 # Logging, folder creation, safe-move, scanner
-├── config.json              # Categories, training data, settings
+├── config.example.json      # Example config (copy to config.json and add your key)
 ├── requirements.txt
 ├── tests/
 │   ├── test_classifier.py
@@ -112,13 +114,38 @@ python gui.py
 
 ### CLI
 ```bash
-python main.py "D:\Downloads"                   # organise
-python main.py "D:\Downloads" --dry-run         # preview
-python main.py "D:\Downloads" --recursive       # include sub-folders
-python main.py "D:\Downloads" --undo            # undo last run
-python main.py "D:\Downloads" --undo --dry-run  # preview undo
-python watcher.py "D:\Downloads"                # watch mode
+python main.py "D:\Downloads"                    # organise
+python main.py "D:\Downloads" --dry-run          # preview
+python main.py "D:\Downloads" --recursive        # include sub-folders
+python main.py "D:\Downloads" --smart-rename     # AI Smart Rename
+python main.py "D:\Downloads" --undo             # undo last run
+python watcher.py "D:\Downloads"                 # watch mode
 ```
+
+---
+
+## 🏷️ AI Smart Rename Setup
+
+Smart Rename uses the **NVIDIA free API** to generate meaningful filenames from document content.
+
+**Example:**
+```
+scan0023.pdf         →  Invoice_Amazon_Mar2024_1299.pdf
+doc_final_v3.docx    →  Resume_Software_Engineer_2024.docx
+untitled_notes.txt   →  AI_Transformer_Research_Notes.txt
+```
+
+**Setup:**
+1. Get your free API key at **https://build.nvidia.com/models**
+2. Copy `config.example.json` → rename to `config.json`
+3. Add your key:
+```json
+"smart_rename": {
+    "enabled": false,
+    "api_key": "nvapi-your-key-here"
+}
+```
+4. In GUI — check **✏️ AI Smart Rename** before running
 
 ---
 
@@ -127,63 +154,24 @@ python watcher.py "D:\Downloads"                # watch mode
 **Before:**
 ```
 Downloads/
-├── invoice_jan.pdf
-├── my_resume.docx
-├── ai_notes.txt
+├── scan0023.pdf
+├── doc_final_v3.docx
+├── notes.txt
 ├── budget.xlsx
-├── legal_contract.pdf
-├── medical_report.pdf
-├── newsletter.eml
-└── archive.zip
+├── contract.pdf
+└── report.eml
 ```
 
-**After:**
+**After (with AI Smart Rename):**
 ```
 Downloads/
-├── Finance/   └── invoice_jan.pdf, budget.xlsx
-├── Resume/    └── my_resume.docx
-├── AI/        └── ai_notes.txt
-├── Legal/     └── legal_contract.pdf
-├── Medical/   └── medical_report.pdf
-├── Personal/  └── newsletter.eml
-├── Other/     └── archive.zip
+├── Finance/   └── Invoice_Amazon_Mar2024_1299.pdf
+├── Resume/    └── Resume_Software_Engineer_2024.docx
+├── AI/        └── AI_Transformer_Research_Notes.txt
+├── Finance/   └── Budget_Annual_2024.xlsx
+├── Legal/     └── Legal_NDA_Contract_Acme.pdf
+├── Personal/  └── Personal_Newsletter_March.eml
 └── organizer.log
-```
-
----
-
-## 🖥️ Example CLI Output (with progress bar)
-
-```
-🗂  Smart AI File Organizer
-   Target    : D:\Downloads
-   Mode      : LIVE
-
-Organising: [████████████] 100% | 8/8 files [00:03]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Smart AI File Organizer — Summary
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Total files found   : 8
-  Successfully moved  : 8
-  Duplicates skipped  : 0
-  Errors              : 0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
----
-
-## ⚙️ Customising Categories
-
-Edit `config.json` — no code changes needed:
-
-```json
-{
-  "categories": ["Finance", "Resume", "AI", "MyNewCategory"],
-  "training_data": {
-    "MyNewCategory": ["keywords describing your category..."]
-  }
-}
 ```
 
 ---
@@ -197,18 +185,20 @@ Expected: **40 passed**
 
 ---
 
-## 🔮 Future Improvements
+## ⚙️ Customising Categories
 
-- [x] ~~GUI interface~~ ✅
-- [x] ~~Recursive scanning~~ ✅
-- [x] ~~Custom categories via config~~ ✅
-- [x] ~~Image support (OCR)~~ ✅
-- [x] ~~Unit tests~~ ✅
-- [x] ~~Larger training corpus~~ ✅
-- [x] ~~Watch mode~~ ✅
-- [x] ~~Undo feature~~ ✅
-- [x] ~~Progress bar~~ ✅
-- [x] ~~More file types (EML, MSG, ZIP)~~ ✅
+Copy `config.example.json` to `config.json` and edit:
+
+```json
+{
+  "categories": ["Finance", "Resume", "AI", "MyNewCategory"],
+  "training_data": {
+    "MyNewCategory": ["keywords describing your category..."]
+  }
+}
+```
+
+---
 
 ---
 
