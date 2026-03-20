@@ -9,8 +9,10 @@ Level 1 additions:
   3. Dark/Light theme toggle — saves preference to config.json
 """
 
+import csv
 import json
 import logging
+import os
 import queue
 import sys
 import threading
@@ -93,6 +95,7 @@ class SmartOrganizerApp(tk.Tk):
         self._build_stats_bar()
         self._setup_logging()
         self._poll_log_queue()
+        self._bind_shortcuts()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
     # ── theme helpers ────────────────────────────────────────────────────────
@@ -362,11 +365,22 @@ class SmartOrganizerApp(tk.Tk):
         # Right-click context menu for manual override
         self._ctx_menu = tk.Menu(self, tearoff=0, bg=t["SURFACE"], fg=t["TEXT"])
         self._tree.bind("<Button-3>", self._show_context_menu)
+        self._tree.bind("<Motion>", self._on_tree_hover)
+        self._tree.bind("<Leave>", self._on_tree_leave)
+        self._tooltip = None
 
-        # Hint label
-        hint = tk.Label(parent, text="Right-click any row to override its category",
-                        font=self.font_badge, bg=t["BG"], fg=t["MUTED"])
-        hint.pack(side="bottom", pady=4)
+        # Bottom bar — hint + export button
+        bottom = tk.Frame(parent, bg=t["BG"])
+        bottom.pack(side="bottom", fill="x", pady=4)
+
+        tk.Label(bottom, text="Right-click any row to override its category",
+                 font=self.font_badge, bg=t["BG"], fg=t["MUTED"]).pack(side="left", padx=10)
+
+        tk.Button(bottom, text="📥 Export CSV", font=self.font_badge,
+                  bg=t["SURFACE"], fg=t["TEXT"], activebackground=ACCENT,
+                  activeforeground="white", bd=0, padx=10, pady=4,
+                  cursor="hand2", relief="flat",
+                  command=self._export_csv).pack(side="right", padx=10)
 
     # ── stats bar ────────────────────────────────────────────────────────────
     def _build_stats_bar(self):
@@ -728,6 +742,100 @@ class SmartOrganizerApp(tk.Tk):
                 "config.json not found.\nCopy config.example.json to config.json first.")
             return
         CategoryManager(self, config_path=str(cfg))
+
+    # ── Feature 1: Keyboard shortcuts ──────────────────────────────────────
+    def _bind_shortcuts(self):
+        self.bind("<Control-r>", lambda e: self._run())
+        self.bind("<Control-R>", lambda e: self._run())
+        self.bind("<Control-w>", lambda e: self._toggle_watch())
+        self.bind("<Control-W>", lambda e: self._toggle_watch())
+        self.bind("<Control-z>", lambda e: self._undo())
+        self.bind("<Control-Z>", lambda e: self._undo())
+        self.bind("<Control-k>", lambda e: self._clear_log())
+        self.bind("<Control-K>", lambda e: self._clear_log())
+
+    # ── Feature 2: Export CSV ────────────────────────────────────────────────
+    def _export_csv(self):
+        if not self._organizer or not self._organizer.results:
+            messagebox.showwarning("No Results", "Run the organiser first to get results.")
+            return
+
+        filepath = filedialog.asksaveasfilename(
+            title="Export Results as CSV",
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            initialfile="organizer_results.csv",
+        )
+        if not filepath:
+            return
+
+        try:
+            with open(filepath, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(["File", "Category", "Confidence (%)", "Status"])
+                for fname, category, conf, is_low, dest in self._organizer.results:
+                    status = "Low confidence" if is_low else "Confident"
+                    writer.writerow([fname, category, f"{conf:.1f}", status])
+
+            self._append_info(f"\n📥 Exported {len(self._organizer.results)} results → {filepath}")
+            messagebox.showinfo("Exported!", f"Results saved to:\n{filepath}")
+        except Exception as exc:
+            messagebox.showerror("Export Failed", str(exc))
+
+    # ── Feature 3: Hover tooltip ─────────────────────────────────────────────
+    def _on_tree_hover(self, event):
+        row = self._tree.identify_row(event.y)
+        if not row:
+            self._hide_tooltip()
+            return
+
+        values = self._tree.item(row, "values")
+        if not values:
+            return
+
+        filename = values[0]
+
+        # Get preview text from organizer
+        if not self._organizer:
+            return
+        text = self._organizer._file_texts.get(filename, "")
+        if not text:
+            return
+
+        preview = text.strip()[:200].replace("\n", " ").replace("\r", "")
+        if len(text.strip()) > 200:
+            preview += "..."
+
+        self._show_tooltip(event.x_root + 12, event.y_root + 10, preview)
+
+    def _on_tree_leave(self, event):
+        self._hide_tooltip()
+
+    def _show_tooltip(self, x, y, text):
+        self._hide_tooltip()
+        t = self._theme
+
+        self._tooltip = tk.Toplevel(self)
+        self._tooltip.wm_overrideredirect(True)
+        self._tooltip.wm_geometry(f"+{x}+{y}")
+        self._tooltip.configure(bg="#3a3a5e")
+
+        frame = tk.Frame(self._tooltip, bg="#3a3a5e", padx=10, pady=8)
+        frame.pack()
+
+        tk.Label(frame, text="📄 Content preview:",
+                 font=self.font_badge, bg="#3a3a5e", fg=WARNING).pack(anchor="w")
+        tk.Label(frame, text=text,
+                 font=self.font_mono, bg="#3a3a5e", fg=t["TEXT"],
+                 wraplength=380, justify="left").pack(anchor="w", pady=(4, 0))
+
+    def _hide_tooltip(self):
+        if self._tooltip:
+            try:
+                self._tooltip.destroy()
+            except Exception:
+                pass
+            self._tooltip = None
 
     def _on_close(self):
         if self._watching:
