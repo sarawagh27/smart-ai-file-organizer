@@ -365,9 +365,22 @@ class SmartOrganizerApp(tk.Tk):
         # Right-click context menu for manual override
         self._ctx_menu = tk.Menu(self, tearoff=0, bg=t["SURFACE"], fg=t["TEXT"])
         self._tree.bind("<Button-3>", self._show_context_menu)
-        self._tree.bind("<Motion>", self._on_tree_hover)
-        self._tree.bind("<Leave>", self._on_tree_leave)
+        self._tree.bind("<ButtonRelease-1>", self._on_tree_click)
         self._tooltip = None
+
+        # Preview panel below table
+        preview_frame = tk.Frame(parent, bg=t["SURFACE2"], pady=6)
+        preview_frame.pack(side="bottom", fill="x", padx=0)
+
+        tk.Label(preview_frame, text="📄 Content Preview",
+                 font=self.font_badge, bg=t["SURFACE2"], fg=MUTED).pack(anchor="w", padx=10)
+
+        self._preview_lbl = tk.Label(
+            preview_frame, text="Click any row to preview file content…",
+            font=self.font_mono, bg=t["SURFACE2"], fg=MUTED,
+            wraplength=700, justify="left", anchor="w",
+        )
+        self._preview_lbl.pack(fill="x", padx=10, pady=(2, 6))
 
         # Bottom bar — hint + export button
         bottom = tk.Frame(parent, bg=t["BG"])
@@ -782,60 +795,33 @@ class SmartOrganizerApp(tk.Tk):
         except Exception as exc:
             messagebox.showerror("Export Failed", str(exc))
 
-    # ── Feature 3: Hover tooltip ─────────────────────────────────────────────
-    def _on_tree_hover(self, event):
+    # ── Feature 3: Click to preview ─────────────────────────────────────────
+    def _on_tree_click(self, event):
         row = self._tree.identify_row(event.y)
         if not row:
-            self._hide_tooltip()
             return
-
         values = self._tree.item(row, "values")
         if not values:
             return
 
         filename = values[0]
-
-        # Get preview text from organizer
         if not self._organizer:
             return
+
         text = self._organizer._file_texts.get(filename, "")
         if not text:
+            self._preview_lbl.configure(
+                text=f"No preview available for '{filename}'", fg=MUTED)
             return
 
-        preview = text.strip()[:200].replace("\n", " ").replace("\r", "")
-        if len(text.strip()) > 200:
-            preview += "..."
+        preview = " ".join(text.split())[:250]
+        if len(text.strip()) > 250:
+            preview += "…"
 
-        self._show_tooltip(event.x_root + 12, event.y_root + 10, preview)
-
-    def _on_tree_leave(self, event):
-        self._hide_tooltip()
-
-    def _show_tooltip(self, x, y, text):
-        self._hide_tooltip()
-        t = self._theme
-
-        self._tooltip = tk.Toplevel(self)
-        self._tooltip.wm_overrideredirect(True)
-        self._tooltip.wm_geometry(f"+{x}+{y}")
-        self._tooltip.configure(bg="#3a3a5e")
-
-        frame = tk.Frame(self._tooltip, bg="#3a3a5e", padx=10, pady=8)
-        frame.pack()
-
-        tk.Label(frame, text="📄 Content preview:",
-                 font=self.font_badge, bg="#3a3a5e", fg=WARNING).pack(anchor="w")
-        tk.Label(frame, text=text,
-                 font=self.font_mono, bg="#3a3a5e", fg=t["TEXT"],
-                 wraplength=380, justify="left").pack(anchor="w", pady=(4, 0))
+        self._preview_lbl.configure(text=preview, fg=TEXT)
 
     def _hide_tooltip(self):
-        if self._tooltip:
-            try:
-                self._tooltip.destroy()
-            except Exception:
-                pass
-            self._tooltip = None
+        pass
 
     def _on_close(self):
         if self._watching:
