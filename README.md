@@ -46,6 +46,7 @@ Available as both a **desktop GUI app** and a **live web app**.
 - ⚙️ **Category Manager** — add/edit/delete categories from GUI
 - ⌨️ **Keyboard shortcuts** — Ctrl+R, Ctrl+W, Ctrl+Z, Ctrl+K
 - 📥 **Export to styled Excel** — colour-coded results spreadsheet
+- 🔍 **Semantic Search** — search organised files by meaning using AI
 - 📝 **Full operation log** saved to `organizer.log`
 
 ### 🌐 Web App (live demo)
@@ -55,6 +56,7 @@ Available as both a **desktop GUI app** and a **live web app**.
 - AI Smart Rename (bring your own NVIDIA key)
 - Export results as CSV or styled Excel
 - Category Manager — add/edit/delete categories
+- Semantic Search — search your files by meaning
 - Try with sample text
 
 ---
@@ -83,22 +85,39 @@ Available as both a **desktop GUI app** and a **live web app**.
 
 ```
 smart-ai-file-organizer/
-├── main.py                  # CLI entry point
-├── gui.py                   # Desktop GUI (Tkinter)
-├── streamlit_app.py         # Web app (Streamlit)
-├── organizer.py             # Pipeline orchestrator
-├── classifier.py            # ML classifier
-├── renamer.py               # AI Smart Rename (NVIDIA API)
-├── category_manager.py      # Category Manager GUI popup
-├── watcher.py               # Watch Mode
-├── undo.py                  # Undo last run
-├── duplicate_detector.py    # MD5 duplicate detection
-├── text_extractor.py        # Text extraction for all file types
-├── utils.py                 # Shared helpers
-├── config.example.json      # Config template
-├── requirements.txt         # Desktop dependencies
-├── requirements_streamlit.txt # Web app dependencies
-└── tests/                   # 40 unit tests
+│
+├── 🖥️  Interfaces
+│   ├── gui.py                   # Desktop GUI (Tkinter dark theme)
+│   ├── streamlit_app.py         # Web app (Streamlit — live demo)
+│   └── main.py                  # CLI entry point
+│
+├── 🧠  AI & ML Core
+│   ├── classifier.py            # sentence-transformers + Naive Bayes
+│   ├── search.py                # Semantic Search engine
+│   └── renamer.py               # AI Smart Rename (NVIDIA free API)
+│
+├── ⚙️  Pipeline
+│   ├── organizer.py             # Main pipeline orchestrator
+│   ├── text_extractor.py        # PDF, DOCX, XLSX, PPTX, EML, MSG, ZIP, Images
+│   ├── duplicate_detector.py    # MD5 hash-based duplicate detection
+│   ├── watcher.py               # Watch Mode (real-time monitoring)
+│   └── undo.py                  # Undo last organise run
+│
+├── 🛠️  Utilities
+│   ├── utils.py                 # Logging, safe-move, scanner
+│   └── category_manager.py      # Category Manager GUI popup
+│
+├── 📋  Config & Setup
+│   ├── config.example.json      # Config template (copy → config.json)
+│   ├── requirements.txt         # Desktop dependencies
+│   └── requirements_streamlit.txt # Web app dependencies
+│
+└── 🧪  Tests
+    ├── tests/test_classifier.py
+    ├── tests/test_duplicate_detector.py
+    ├── tests/test_organizer.py
+    ├── tests/test_text_extractor.py
+    └── tests/test_search.py     # 53 tests total
 ```
 
 ---
