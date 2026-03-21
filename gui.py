@@ -24,6 +24,7 @@ ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 
 from organizer import FileOrganizer
+from search import SemanticSearch
 from category_manager import CategoryManager
 from undo import undo_moves
 from utils import scan_directory
@@ -78,6 +79,7 @@ class SmartOrganizerApp(tk.Tk):
         self._recursive = tk.BooleanVar(value=False)
         self._smart_rename = tk.BooleanVar(value=False)
         self._running   = False
+        self._search_engine = None
         self._watching  = False
         self._watcher   = None
         self._organizer = None   # current FileOrganizer instance
@@ -324,6 +326,11 @@ class SmartOrganizerApp(tk.Tk):
         res_frame = tk.Frame(self._nb, bg=t["BG"])
         self._nb.add(res_frame, text="📊  Results")
         self._build_results_table(res_frame)
+
+        # Tab 3 — Semantic Search
+        search_frame = tk.Frame(self._nb, bg=t["BG"])
+        self._nb.add(search_frame, text="🔍  Search")
+        self._build_search_tab(search_frame)
 
     def _build_results_table(self, parent):
         t = self._theme
@@ -744,6 +751,174 @@ class SmartOrganizerApp(tk.Tk):
                      ("dupes","Duplicates: …"),("low","Low conf: …"),("errors","Errors: …")]:
             self._stat_vars[k].set(v)
 
+
+    # ── Search tab ──────────────────────────────────────────────────────────
+    def _build_search_tab(self, parent):
+        t = self._theme
+
+        # Search bar row
+        top = tk.Frame(parent, bg=t["BG"], padx=16, pady=12)
+        top.pack(fill="x")
+
+        tk.Label(top, text="🔍 Search your organised files by meaning",
+                 font=self.font_label, bg=t["BG"], fg=t["TEXT"]).pack(anchor="w", pady=(0,6))
+
+        entry_row = tk.Frame(top, bg=t["BG"])
+        entry_row.pack(fill="x")
+
+        ef = tk.Frame(entry_row, bg=t["SURFACE"], highlightthickness=1,
+                      highlightbackground=ACCENT)
+        ef.pack(side="left", fill="x", expand=True, padx=(0,8))
+
+        self._search_var = tk.StringVar()
+        self._search_entry = tk.Entry(
+            ef, textvariable=self._search_var,
+            font=self.font_label, bg=t["SURFACE"], fg=t["TEXT"],
+            insertbackground=t["WHITE"], bd=0, relief="flat",
+        )
+        self._search_entry.pack(fill="x", padx=10, pady=7)
+        self._search_entry.bind("<Return>", lambda e: self._do_search())
+
+        tk.Button(entry_row, text="Search", font=self.font_btn,
+                  bg=ACCENT, fg="white", activebackground=ACCENT_DARK,
+                  bd=0, padx=16, pady=6, cursor="hand2", relief="flat",
+                  command=self._do_search).pack(side="left", padx=(0,6))
+
+        tk.Button(entry_row, text="🔄 Rebuild Index", font=self.font_btn,
+                  bg=t["SURFACE2"], fg=t["TEXT"], activebackground=t["BG"],
+                  bd=0, padx=12, pady=6, cursor="hand2", relief="flat",
+                  command=self._rebuild_index).pack(side="left")
+
+        # Category filter
+        filter_row = tk.Frame(parent, bg=t["BG"], padx=16)
+        filter_row.pack(fill="x")
+
+        tk.Label(filter_row, text="Filter by category:",
+                 font=self.font_badge, bg=t["BG"], fg=t["MUTED"]).pack(side="left", padx=(0,8))
+
+        self._cat_filter = tk.StringVar(value="All")
+        cats = ["All", "Finance", "Resume", "AI", "Research",
+                "Personal", "Legal", "Medical", "Other"]
+        cat_menu = ttk.Combobox(filter_row, textvariable=self._cat_filter,
+                                 values=cats, state="readonly", width=14)
+        cat_menu.pack(side="left")
+
+        # Status label
+        self._search_status = tk.Label(parent, text="Build the index first — run the organiser on a folder, then click Rebuild Index.",
+                                        font=self.font_badge, bg=t["BG"], fg=t["MUTED"],
+                                        wraplength=600, justify="left")
+        self._search_status.pack(anchor="w", padx=16, pady=(8,4))
+
+        # Results area
+        results_frame = tk.Frame(parent, bg=t["BG"])
+        results_frame.pack(fill="both", expand=True, padx=16, pady=(0,12))
+
+        cols = ("File", "Category", "Relevance", "Preview")
+        style = ttk.Style()
+        style.configure("Search.Treeview",
+                        background=t["SURFACE2"], foreground=t["TEXT"],
+                        fieldbackground=t["SURFACE2"], font=("Segoe UI", 9),
+                        rowheight=28)
+        style.configure("Search.Treeview.Heading",
+                        background=t["SURFACE"], foreground=t["TEXT"],
+                        font=("Segoe UI", 9, "bold"))
+        style.map("Search.Treeview", background=[("selected", ACCENT)])
+
+        self._search_tree = ttk.Treeview(results_frame, columns=cols,
+                                          show="headings", style="Search.Treeview")
+        self._search_tree.heading("File",      text="File")
+        self._search_tree.heading("Category",  text="Category")
+        self._search_tree.heading("Relevance", text="Relevance")
+        self._search_tree.heading("Preview",   text="Content Preview")
+
+        self._search_tree.column("File",      width=240, anchor="w")
+        self._search_tree.column("Category",  width=110, anchor="center")
+        self._search_tree.column("Relevance", width=100, anchor="center")
+        self._search_tree.column("Preview",   width=360, anchor="w")
+
+        sb = ttk.Scrollbar(results_frame, orient="vertical",
+                           command=self._search_tree.yview)
+        self._search_tree.configure(yscrollcommand=sb.set)
+        self._search_tree.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+
+    def _rebuild_index(self):
+        folder = self._folder.get().strip()
+        if not folder or not Path(folder).is_dir():
+            messagebox.showwarning("No folder", "Please select a folder first.")
+            return
+
+        self._search_status.configure(text="Building index… please wait.", fg=WARNING)
+        self.update_idletasks()
+
+        def build():
+            try:
+                engine = SemanticSearch(target_dir=folder)
+                n = engine.build_index(force=True)
+                self._search_engine = engine
+                self.after(0, lambda: self._search_status.configure(
+                    text=f"✅ Index built — {n} file(s) indexed. Ready to search!",
+                    fg=SUCCESS))
+            except Exception as exc:
+                self.after(0, lambda: self._search_status.configure(
+                    text=f"❌ Error: {exc}", fg=ERROR))
+
+        import threading
+        threading.Thread(target=build, daemon=True).start()
+
+    def _do_search(self):
+        query = self._search_var.get().strip()
+        if not query:
+            return
+
+        if not self._search_engine:
+            folder = self._folder.get().strip()
+            if not folder or not Path(folder).is_dir():
+                messagebox.showwarning("No folder", "Select a folder and rebuild the index first.")
+                return
+            self._search_status.configure(text="Loading index…", fg=WARNING)
+            self.update_idletasks()
+            try:
+                self._search_engine = SemanticSearch(target_dir=folder)
+                n = self._search_engine.build_index()
+                if n == 0:
+                    self._search_status.configure(
+                        text="No files indexed. Run the organiser first, then Rebuild Index.",
+                        fg=WARNING)
+                    return
+            except Exception as exc:
+                self._search_status.configure(text=f"Error: {exc}", fg=ERROR)
+                return
+
+        cat_filter = self._cat_filter.get()
+        if cat_filter == "All":
+            cat_filter = None
+
+        results = self._search_engine.search(query, top_k=20,
+                                              category_filter=cat_filter)
+
+        # Clear previous results
+        for row in self._search_tree.get_children():
+            self._search_tree.delete(row)
+
+        if not results:
+            self._search_status.configure(
+                text=f'No results for "{query}" — try different keywords.',
+                fg=WARNING)
+            return
+
+        for fname, category, score, preview, _ in results:
+            tag = "high" if score >= 60 else "mid" if score >= 40 else "low"
+            self._search_tree.insert("", "end",
+                values=(fname, category, f"{score:.1f}%", preview[:80] + "…"),
+                tags=(tag,))
+
+        self._search_tree.tag_configure("high", foreground=SUCCESS)
+        self._search_tree.tag_configure("mid",  foreground=WARNING)
+        self._search_tree.tag_configure("low",  foreground=t["MUTED"] if hasattr(self, '_theme') else "#64748b")
+
+        self._search_status.configure(
+            text=f'Found {len(results)} result(s) for "{query}"', fg=SUCCESS)
 
     def _open_categories(self):
         cfg = CONFIG_PATH

@@ -118,6 +118,7 @@ with st.sidebar:
         "📄 Classify Files",
         "✏️ Try with Text",
         "📊 Results & Export",
+        "🔍 Semantic Search",
         "⚙️ Category Manager",
     ], label_visibility="collapsed")
 
@@ -409,7 +410,93 @@ elif page == "📊 Results & Export":
             st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PAGE 4 — Category Manager
+# PAGE 4 — Semantic Search
+# ══════════════════════════════════════════════════════════════════════════════
+elif page == "🔍 Semantic Search":
+    st.markdown("## 🔍 Semantic Search")
+    st.markdown("Search your organised files by **meaning**, not just keywords.")
+
+    folder_path = st.text_input(
+        "Path to your organised folder:",
+        placeholder="e.g. D:/Downloads  or  /Users/sara/Downloads",
+        help="The folder where your files have been organised into category sub-folders",
+    )
+
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        query = st.text_input("Search query:", placeholder="e.g. medical reports blood test, invoices from Amazon, AI research papers")
+    with col2:
+        cat_filter = st.selectbox("Filter by category:",
+                                   ["All"] + list(CAT_COLORS.keys()))
+
+    col_a, col_b = st.columns(2)
+    search_btn  = col_a.button("🔍 Search", type="primary", use_container_width=True)
+    rebuild_btn = col_b.button("🔄 Rebuild Index", use_container_width=True)
+
+    if rebuild_btn:
+        if not folder_path:
+            st.warning("Please enter a folder path first.")
+        else:
+            with st.spinner("Building search index… this may take a moment."):
+                try:
+                    from search import SemanticSearch
+                    engine = SemanticSearch(target_dir=folder_path)
+                    n = engine.build_index(force=True)
+                    st.session_state["search_engine"] = engine
+                    st.success(f"✅ Index built — {n} file(s) indexed and ready to search!")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+    if search_btn:
+        if not query.strip():
+            st.warning("Please enter a search query.")
+        elif not folder_path:
+            st.warning("Please enter a folder path.")
+        else:
+            # Load or build engine
+            if "search_engine" not in st.session_state:
+                with st.spinner("Loading index…"):
+                    try:
+                        from search import SemanticSearch
+                        engine = SemanticSearch(target_dir=folder_path)
+                        n = engine.build_index()
+                        st.session_state["search_engine"] = engine
+                        if n == 0:
+                            st.warning("No files indexed. Run the organiser first then rebuild.")
+                            st.stop()
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+                        st.stop()
+
+            engine = st.session_state["search_engine"]
+            cf = None if cat_filter == "All" else cat_filter
+
+            with st.spinner("Searching…"):
+                results = engine.search(query, top_k=20, category_filter=cf)
+
+            if not results:
+                st.warning(f'No results for "{query}" — try different keywords or rebuild the index.')
+            else:
+                st.success("Found " + str(len(results)) + " result(s) for: " + query)
+                st.divider()
+
+                for fname, category, score, preview, path in results:
+                    color = CAT_COLORS.get(category, "#64748b")
+                    icon  = CAT_ICONS.get(category, "📁")
+                    bar_color = "🟢" if score >= 60 else "🟡" if score >= 40 else "🔴"
+
+                    with st.container():
+                        c1, c2, c3 = st.columns([3, 1, 1])
+                        c1.markdown(f"**{fname}**")
+                        c2.markdown(f"{icon} {category}")
+                        c3.markdown(f"{bar_color} {score:.1f}%")
+                        st.caption(f"📄 {preview[:120]}…")
+                        st.divider()
+
+    st.info("💡 **How it works:** The AI reads the actual content of your files and finds ones that match your query by meaning — not just keyword matching. Works best on text-heavy files like PDFs, DOCX, and TXT.")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 5 — Category Manager
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "⚙️ Category Manager":
     st.markdown("## ⚙️ Category Manager")
