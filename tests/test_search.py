@@ -5,21 +5,22 @@ Tests for the SemanticSearch engine.
 """
 
 import json
+import importlib.util
 import os
 import shutil
-import tempfile
 from pathlib import Path
 import pytest
 
-try:
-    from sentence_transformers import SentenceTransformer
-    HAS_SENTENCE_TRANSFORMERS = True
-except ImportError:
-    HAS_SENTENCE_TRANSFORMERS = False
+HAS_SENTENCE_TRANSFORMERS = importlib.util.find_spec("sentence_transformers") is not None
+
+RUN_TRANSFORMER_TESTS = (
+    os.environ.get("SMART_ORGANIZER_DISABLE_TRANSFORMERS", "").lower()
+    not in {"1", "true", "yes", "on"}
+)
 
 skip_no_st = pytest.mark.skipif(
-    not HAS_SENTENCE_TRANSFORMERS,
-    reason="sentence-transformers not installed"
+    not HAS_SENTENCE_TRANSFORMERS or not RUN_TRANSFORMER_TESTS,
+    reason="sentence-transformers tests require the package and transformer test opt-in",
 )
 
 ROOT = Path(__file__).parent.parent
@@ -79,6 +80,24 @@ class TestSemanticSearch:
         engine = SemanticSearch(target_dir=str(organised_folder))
         assert engine.index_size == 0
         assert not engine._is_built
+
+    def test_missing_target_builds_empty_index(self, tmp_path):
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from search import SemanticSearch
+        engine = SemanticSearch(target_dir=str(tmp_path / "missing"))
+        assert engine.build_index() == 0
+        assert engine.index_size == 0
+        assert not engine._is_built
+
+    def test_empty_query_returns_empty_without_model(self, organised_folder):
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from search import SemanticSearch
+        engine = SemanticSearch(target_dir=str(organised_folder))
+        engine._is_built = True
+        engine._index = [{"filename": "a.txt", "category": "Other"}]
+        assert engine.search("   ") == []
 
     @skip_no_st
     def test_build_index(self, organised_folder):

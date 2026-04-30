@@ -16,11 +16,13 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 DEFAULT_CONFIG = Path(__file__).parent / "config.json"
+EXAMPLE_CONFIG = Path(__file__).parent / "config.example.json"
 
 
 def _load_config() -> dict:
     try:
-        with open(DEFAULT_CONFIG, "r", encoding="utf-8") as f:
+        config_path = DEFAULT_CONFIG if DEFAULT_CONFIG.exists() else EXAMPLE_CONFIG
+        with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {}
@@ -73,11 +75,13 @@ def safe_move(src: str, dest_dir: str) -> str:
     """Move src into dest_dir; appends counter on name collision."""
     logger = logging.getLogger(__name__)
     src_path = Path(src)
-    dest_path = Path(dest_dir) / src_path.name
+    dest_root = Path(dest_dir)
+    dest_root.mkdir(parents=True, exist_ok=True)
+    dest_path = dest_root / src_path.name
 
     counter = 1
     while dest_path.exists():
-        dest_path = Path(dest_dir) / f"{src_path.stem}_{counter}{src_path.suffix}"
+        dest_path = dest_root / f"{src_path.stem}_{counter}{src_path.suffix}"
         counter += 1
 
     shutil.move(str(src_path), str(dest_path))

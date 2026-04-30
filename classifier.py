@@ -15,6 +15,7 @@ The model auto-selects:
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -24,10 +25,15 @@ from sklearn.pipeline import Pipeline
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CONFIG = Path(__file__).parent / "config.json"
+PROJECT_ROOT = Path(__file__).parent
+DEFAULT_CONFIG = PROJECT_ROOT / "config.json"
+EXAMPLE_CONFIG = PROJECT_ROOT / "config.example.json"
 
 
 def load_config(config_path: Path = DEFAULT_CONFIG) -> Dict:
+    """Load private config, falling back to the committed example config."""
+    if not config_path.exists() and config_path == DEFAULT_CONFIG:
+        config_path = EXAMPLE_CONFIG
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
     with open(config_path, "r", encoding="utf-8") as f:
@@ -35,6 +41,7 @@ def load_config(config_path: Path = DEFAULT_CONFIG) -> Dict:
 
 
 def save_config(config: Dict, config_path: Path = DEFAULT_CONFIG) -> None:
+    config_path.parent.mkdir(parents=True, exist_ok=True)
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
 
@@ -193,9 +200,13 @@ class DocumentClassifier:
 
     def train(self) -> None:
         """Try to load transformer model; fall back to TF-IDF if unavailable."""
-        # Try transformer first
+        disable_transformers = os.environ.get(
+            "SMART_ORGANIZER_DISABLE_TRANSFORMERS", ""
+        ).lower() in {"1", "true", "yes", "on"}
+
+        # Try transformer first unless fast/offline mode is requested.
         transformer = TransformerClassifier(self.categories)
-        if transformer.load():
+        if not disable_transformers and transformer.load():
             self._transformer     = transformer
             self._use_transformer = True
             self._is_trained      = True

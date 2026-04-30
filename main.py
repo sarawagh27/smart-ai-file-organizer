@@ -5,16 +5,19 @@ Entry point for the Smart AI File Organizer.
 
 Usage
 -----
-    python main.py "D:\\Downloads"                  # organise
-    python main.py "D:\\Downloads" --dry-run        # preview
-    python main.py "D:\\Downloads" --recursive      # include sub-folders
-    python main.py "D:\\Downloads" --undo           # undo last run
-    python main.py "D:\\Downloads" --undo --dry-run # preview undo
-    python main.py "D:\\Downloads" -v               # verbose
-    python gui.py                                   # launch GUI
+    smart-organizer "D:\\Downloads"                 # organize
+    smart-organizer "D:\\Downloads" --dry-run       # preview
+    smart-organizer "D:\\Downloads" --recursive     # include subfolders
+    smart-organizer "D:\\Downloads" --undo          # undo last run
+    smart-organizer-gui                             # launch GUI
+
+Direct Python usage also works:
+    python main.py "D:\\Downloads"
+    python main.py "D:\\Downloads" --dry-run
 """
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -23,19 +26,21 @@ from organizer import FileOrganizer
 from undo import undo_moves, print_undo_summary
 from utils import print_summary, setup_logging
 
+PROJECT_ROOT = Path(__file__).parent
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="smart_organizer",
+        prog="smart-organizer",
         description=(
-            "Smart AI File Organizer — classify and move files into category sub-folders.\n"
+            "Smart AI File Organizer — classify and move files into category folders.\n"
             "Supports PDF, DOCX, TXT, XLSX, PPTX, CSV, EML, MSG, ZIP, PNG, JPG."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "directory", nargs="?", default=".",
-        help="Folder to organise (default: current directory).",
+        help="Folder to organize (default: current directory).",
     )
     parser.add_argument(
         "--dry-run", action="store_true",
@@ -43,15 +48,15 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--recursive", action="store_true",
-        help="Also scan and organise files inside sub-folders.",
+        help="Also scan and organize files inside subfolders.",
     )
     parser.add_argument(
         "--undo", action="store_true",
-        help="Undo the last organise run — restore files to original locations.",
+        help="Undo the last organize run — restore files to original locations.",
     )
     parser.add_argument(
         "--smart-rename", action="store_true",
-        help="Use AI to rename files based on their content (requires ANTHROPIC_API_KEY).",
+        help="Use AI to rename files based on their content (requires NVIDIA_API_KEY).",
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true",
@@ -97,13 +102,13 @@ def main() -> int:
     if args.dry_run:
         print("⚠️  DRY RUN — no files will be moved.\n")
 
-    # Load API key from config or environment
-    import json as _json
-    cfg = {}
+    # Load optional Smart Rename API key from private config or the environment.
+    cfg_path = PROJECT_ROOT / "config.json"
     try:
-        cfg = _json.loads((target.parent / "config.json").read_text())
-    except Exception:
-        pass
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8")) if cfg_path.exists() else {}
+    except json.JSONDecodeError as exc:
+        print(f"[ERROR] Invalid JSON in {cfg_path}: {exc}", file=sys.stderr)
+        return 1
     api_key = cfg.get("smart_rename", {}).get("api_key", "")
 
     organizer = FileOrganizer(

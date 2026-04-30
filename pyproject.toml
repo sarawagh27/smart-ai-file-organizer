@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smart-ai-file-organizer"
+version = "0.1.0"
+description = "AI-assisted file organizer with classification, duplicate detection, semantic search, and GUI front ends."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Sara Wagh" }]
+keywords = ["file-organizer", "machine-learning", "streamlit", "semantic-search"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "PyPDF2>=3.0.0",
+  "python-docx>=1.1.0",
+  "scikit-learn>=1.4.0",
+  "langdetect>=1.0.9",
+  "openpyxl>=3.1.0",
+  "python-pptx>=0.6.21",
+  "Pillow>=10.0.0",
+  "extract-msg>=0.28.0",
+  "watchdog>=4.0.0",
+  "tqdm>=4.66.0",
+  "openai>=1.0.0",
+]
+
+[project.optional-dependencies]
+ai = ["sentence-transformers>=2.7.0"]
+ocr = ["pytesseract>=0.3.10"]
+web = [
+  "streamlit>=1.32.0",
+  "pandas>=2.0.0",
+]
+dev = [
+  "pytest>=8.0.0",
+]
+all = [
+  "sentence-transformers>=2.7.0",
+  "pytesseract>=0.3.10",
+  "streamlit>=1.32.0",
+  "pandas>=2.0.0",
+]
+
+[project.scripts]
+smart-organizer = "main:main"
+smart-organizer-gui = "gui:main"
+smart-organizer-undo = "undo:main"
+smart-organizer-watch = "watcher:main"
+
+[tool.setuptools]
+py-modules = [
+  "category_manager",
+  "classifier",
+  "duplicate_detector",
+  "gui",
+  "main",
+  "organizer",
+  "renamer",
+  "search",
+  "streamlit_app",
+  "text_extractor",
+  "undo",
+  "utils",
+  "watcher",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

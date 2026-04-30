@@ -4,9 +4,7 @@ tests/test_duplicate_detector.py
 Unit tests for the DuplicateDetector.
 """
 
-import os
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -101,3 +99,17 @@ class TestDuplicateDetector:
         for f in files:
             is_dup, _ = detector.check(str(f))
             assert is_dup is False
+
+    def test_summary_reports_duplicate_groups(self, detector, tmp_path):
+        f1 = tmp_path / "original.txt"
+        f2 = tmp_path / "copy.txt"
+        f1.write_text("shared content")
+        f2.write_text("shared content")
+
+        detector.check(str(f1))
+        detector.check(str(f2))
+
+        summary = detector.summary()
+        groups = list(summary.values())
+        assert len(groups) == 1
+        assert groups[0] == [str(f1), str(f2)]

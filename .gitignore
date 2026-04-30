@@ -1,52 +1,51 @@
-# ── Python ──────────────────────────────────────────
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.pyo
 
-# ── Virtual environments ─────────────────────────────
+# Virtual environments
 .venv/
 venv/
 env/
 ENV/
 
-# ── Distribution / packaging ─────────────────────────
+# Distribution / packaging
 dist/
 build/
 *.egg-info/
 *.egg
 .eggs/
 
-# ── Logs & runtime output ────────────────────────────
+# Logs and runtime output
 *.log
 organizer.log
+.search_index.pkl
 
-# ── Environment variables ────────────────────────────
+# Environment variables and private config
 .env
 .env.*
+config.json
 
-# ── Testing & coverage ───────────────────────────────
+# Testing and coverage
 .pytest_cache/
 .coverage
 htmlcov/
 coverage.xml
 
-# ── IDEs & editors ───────────────────────────────────
+# IDEs and editors
 .idea/
 .vscode/
 *.sublime-project
 *.sublime-workspace
 
-# ── OS files ─────────────────────────────────────────
+# OS files
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# ── Temporary / misc ─────────────────────────────────
+# Temporary archives and scratch files
 *.zip
 *.tar.gz
 *.tmp
 *.bak
-
-# ── API Keys & sensitive config ───────────────────────
-config.json

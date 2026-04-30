@@ -54,6 +54,7 @@ class DuplicateDetector:
     def __init__(self):
         # Maps MD5 hash → first file path seen with that hash
         self._seen: Dict[str, str] = {}
+        self._all_paths: Dict[str, List[str]] = {}
 
     def check(self, filepath: str) -> tuple[bool, Optional[str]]:
         """
@@ -72,6 +73,7 @@ class DuplicateDetector:
 
         if md5 in self._seen:
             original = self._seen[md5]
+            self._all_paths.setdefault(md5, [original]).append(filepath)
             logger.info(
                 "Duplicate detected: '%s' matches '%s' (MD5: %s)",
                 filepath, original, md5,
@@ -80,11 +82,13 @@ class DuplicateDetector:
 
         # First time we see this hash — register it
         self._seen[md5] = filepath
+        self._all_paths[md5] = [filepath]
         return False, None
 
     def reset(self) -> None:
         """Clear the internal hash registry."""
         self._seen.clear()
+        self._all_paths.clear()
 
     def summary(self) -> Dict[str, List[str]]:
         """
@@ -93,7 +97,4 @@ class DuplicateDetector:
         (Useful after bulk processing to get a full duplicate report.)
         """
         # Build reverse mapping: hash → [list of all paths]
-        reverse: Dict[str, List[str]] = {}
-        for md5, path in self._seen.items():
-            reverse.setdefault(md5, []).append(path)
-        return {h: paths for h, paths in reverse.items() if len(paths) > 1}
+        return {h: paths for h, paths in self._all_paths.items() if len(paths) > 1}

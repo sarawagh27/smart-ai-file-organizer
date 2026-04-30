@@ -3,12 +3,12 @@ search.py
 ---------
 Semantic Search for Smart AI File Organizer.
 
-Uses sentence-transformers to build an index of all organised files
+Uses sentence-transformers to build an index of all organized files
 and search them by meaning — not just keywords.
 
 How it works
 ------------
-1. Scan all category sub-folders for organised files
+1. Scan all category subfolders for organized files
 2. Extract text from each file
 3. Encode each file as a 384-dim embedding vector
 4. On search: encode the query, find closest files by cosine similarity
@@ -37,11 +37,11 @@ INDEX_FILE = ".search_index.pkl"
 
 class SemanticSearch:
     """
-    Semantic search engine for organised files.
+    Semantic search engine for organized files.
 
     Parameters
     ----------
-    target_dir : str — the organised folder (contains category sub-folders)
+    target_dir : str — the organized folder (contains category subfolders)
     """
 
     def __init__(self, target_dir: str):
@@ -66,7 +66,7 @@ class SemanticSearch:
     # ── Build index ──────────────────────────────────────────────────────────
     def build_index(self, force: bool = False) -> int:
         """
-        Scan all category sub-folders, extract text, build embeddings.
+        Scan all category subfolders, extract text, build embeddings.
 
         Parameters
         ----------
@@ -77,6 +77,15 @@ class SemanticSearch:
         int — number of files indexed
         """
         from text_extractor import extract_text, SUPPORTED_EXTENSIONS
+
+        if not self.target_dir.exists() or not self.target_dir.is_dir():
+            logger.warning(
+                "Search target does not exist or is not a folder: %s",
+                self.target_dir,
+            )
+            self._index = []
+            self._is_built = False
+            return 0
 
         # Load config for categories
         config_path = Path(__file__).parent / "config.json"
@@ -106,7 +115,7 @@ class SemanticSearch:
         self._load_model()
         self._index = []
 
-        # Scan category sub-folders
+        # Scan category subfolders
         files_found = []
         for cat_dir in self.target_dir.iterdir():
             if cat_dir.is_dir() and cat_dir.name in categories:
@@ -187,6 +196,9 @@ class SemanticSearch:
         -------
         List of (filename, category, score_pct, preview)
         """
+        if not query or not query.strip():
+            return []
+
         if not self._is_built or not self._index:
             logger.warning("Index not built. Call build_index() first.")
             return []

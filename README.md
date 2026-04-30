@@ -1,209 +1,243 @@
-# 🗂️ Smart AI File Organizer
+# Smart AI File Organizer
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
-  <img src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge"/>
-  <img src="https://img.shields.io/github/last-commit/sarawagh27/smart-ai-file-organizer?style=for-the-badge&color=f59e0b"/>
-  <img src="https://img.shields.io/github/repo-size/sarawagh27/smart-ai-file-organizer?style=for-the-badge&color=8b5cf6"/>
+  <img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white">
+  <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge">
+  <img alt="Status Beta" src="https://img.shields.io/badge/Status-Beta-f59e0b?style=for-the-badge">
+  <img alt="CI" src="https://img.shields.io/github/actions/workflow/status/sarawagh27/smart-ai-file-organizer/ci.yml?branch=main&style=for-the-badge&label=CI">
   <a href="https://smart-ai-file-organizer.streamlit.app">
-    <img src="https://img.shields.io/badge/Live%20Demo-Streamlit-ff4b4b?style=for-the-badge&logo=streamlit&logoColor=white"/>
+    <img alt="Live Demo" src="https://img.shields.io/badge/Live%20Demo-Streamlit-ff4b4b?style=for-the-badge&logo=streamlit&logoColor=white">
   </a>
 </p>
 
 <p align="center">
-  <b>Automatically classify, rename, and organise your files using Machine Learning — no manual sorting needed.</b>
+  <strong>AI-powered file organization for messy local folders.</strong><br>
+  Classify, rename, deduplicate, and search documents by what they contain, not what they are called.<br>
+  Use it from the CLI, desktop GUI, or Streamlit web app.
 </p>
 
 <p align="center">
-  <a href="https://smart-ai-file-organizer.streamlit.app">🌐 Try it live → smart-ai-file-organizer.streamlit.app</a>
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#interfaces">Interfaces</a> ·
+  <a href="#demo">Demo</a> ·
+  <a href="#usage">Usage</a>
 </p>
 
----
+## Why This Project?
 
-## 📌 Overview
+Most folders become messy because filenames are unreliable: `scan_001.pdf`,
+`final_final.docx`, exported spreadsheets, duplicated downloads, and screenshots
+all pile up together.
 
-**Smart AI File Organizer** scans a folder, reads the content of each document, and uses a **sentence-transformers** machine learning model to predict its category. Files are automatically moved into labelled sub-folders. An optional **AI Smart Rename** feature uses the NVIDIA free API to generate meaningful filenames from document content.
+Smart AI File Organizer reads the content inside each file, then gives you a
+safer workflow for turning chaos into structure:
 
-Available as both a **desktop GUI app** and a **live web app**.
+- Preview every move with dry-run mode before touching files.
+- Classify documents by meaning using transformer embeddings or a fast offline
+  TF-IDF fallback.
+- Detect duplicates by content hash instead of filename.
+- Search organized files semantically, even when you do not remember exact words.
+- Keep secrets and personal category rules in local config, outside git.
 
----
+## Demo
 
-## ✨ Features
+Record a 10-20 second walkthrough and save it as `docs/demo.gif`. Suggested flow:
+select a folder, run dry-run, organize files, then search for a document by
+meaning.
 
-### 🖥️ Desktop App
-- 📄 Supports **PDF, DOCX, TXT, XLSX, PPTX, CSV, EML, MSG, ZIP, PNG, JPG**
-- 🤖 **ML classification** — sentence-transformers + Naive Bayes fallback
-- 🏷️ **AI Smart Rename** — renames files based on content (NVIDIA free API)
-- 🌐 **Language detection** — detects document language automatically
-- 🗂️ **8 categories** — Finance · Resume · AI · Research · Personal · Legal · Medical · Other
-- 👁️ **Watch Mode** — monitors folder in real-time
-- ↩️ **Undo** — restore files to original locations
-- 📊 **Confidence scores** — know how certain the model is
-- ✏️ **Manual override** — right-click to correct any category
-- 🔍 **Dry Run** — preview before moving anything
-- 📂 **Recursive scanning** — include sub-folders
-- 🔁 **Duplicate detection** via MD5 hashing
-- ⚙️ **Category Manager** — add/edit/delete categories from GUI
-- ⌨️ **Keyboard shortcuts** — Ctrl+R, Ctrl+W, Ctrl+Z, Ctrl+K
-- 📥 **Export to styled Excel** — colour-coded results spreadsheet
-- 🔍 **Semantic Search** — search organised files by meaning using AI
-- 📝 **Full operation log** saved to `organizer.log`
-
-### 🌐 Web App (live demo)
-- Upload any supported file → instant AI classification
-- Confidence scores + language detection
-- Manual category override (model learns from corrections)
-- AI Smart Rename (bring your own NVIDIA key)
-- Export results as CSV or styled Excel
-- Category Manager — add/edit/delete categories
-- Semantic Search — search your files by meaning
-- Try with sample text
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Language | Python 3.10+ |
-| ML Model | sentence-transformers (`all-MiniLM-L6-v2`) |
-| Fallback Classifier | TF-IDF + Multinomial Naive Bayes |
-| AI Smart Rename | NVIDIA NIM API (free) — `meta/llama-3.1-8b-instruct` |
-| Language Detection | langdetect |
-| Web App | Streamlit |
-| Desktop GUI | Tkinter |
-| PDF | PyPDF2 |
-| DOCX | python-docx |
-| XLSX | openpyxl |
-| PPTX | python-pptx |
-| Watch Mode | watchdog |
-| Duplicate Detection | MD5 hashing |
-
----
-
-## 📁 Project Structure
-
-```
-smart-ai-file-organizer/
-│
-├── 🖥️  Interfaces
-│   ├── gui.py                   # Desktop GUI (Tkinter dark theme)
-│   ├── streamlit_app.py         # Web app (Streamlit — live demo)
-│   └── main.py                  # CLI entry point
-│
-├── 🧠  AI & ML Core
-│   ├── classifier.py            # sentence-transformers + Naive Bayes
-│   ├── search.py                # Semantic Search engine
-│   └── renamer.py               # AI Smart Rename (NVIDIA free API)
-│
-├── ⚙️  Pipeline
-│   ├── organizer.py             # Main pipeline orchestrator
-│   ├── text_extractor.py        # PDF, DOCX, XLSX, PPTX, EML, MSG, ZIP, Images
-│   ├── duplicate_detector.py    # MD5 hash-based duplicate detection
-│   ├── watcher.py               # Watch Mode (real-time monitoring)
-│   └── undo.py                  # Undo last organise run
-│
-├── 🛠️  Utilities
-│   ├── utils.py                 # Logging, safe-move, scanner
-│   └── category_manager.py      # Category Manager GUI popup
-│
-├── 📋  Config & Setup
-│   ├── config.example.json      # Config template (copy → config.json)
-│   ├── requirements.txt         # Desktop dependencies
-│   └── requirements_streamlit.txt # Web app dependencies
-│
-└── 🧪  Tests
-    ├── tests/test_classifier.py
-    ├── tests/test_duplicate_detector.py
-    ├── tests/test_organizer.py
-    ├── tests/test_text_extractor.py
-    └── tests/test_search.py     # 53 tests total
+```text
+docs/demo.gif
 ```
 
----
+When the GIF is ready, add it below:
 
-## ⚙️ Installation (Desktop)
+```markdown
+![Smart AI File Organizer demo](docs/demo.gif)
+```
+
+## Before vs After
+
+```text
+Before: Downloads/                 After: Downloads/
+|-- scan_001.pdf                   |-- Finance/
+|-- final_final.docx               |   `-- budget_march.xlsx
+|-- notes.txt                      |-- Resume/
+|-- report-copy.pdf                |   `-- final_final.docx
+|-- IMG_2044.jpg                   |-- Research/
+`-- budget_march.xlsx              |   `-- report-copy.pdf
+                                   |-- Personal/
+                                   |   `-- IMG_2044.jpg
+                                   |-- Other/
+                                   |   `-- notes.txt
+                                   `-- organizer.log
+```
+
+With Smart Rename enabled, vague names can become descriptive:
+
+```text
+scan0023.pdf       -> Invoice_Amazon_Mar2024_1299.pdf
+doc_final_v3.docx  -> Resume_Software_Engineer_2026.docx
+untitled_notes.txt -> AI_Transformer_Research_Notes.txt
+```
+
+## Features
+
+- Content-aware document classification.
+- TXT, CSV, PDF, DOCX, XLSX, PPTX, EML, MSG, ZIP, PNG, JPG, and JPEG support.
+- Duplicate detection with content hashes.
+- Semantic search across organized folders.
+- Dry-run, undo, recursive scan, watch mode, and operation logs.
+- Category management, manual overrides, confidence scores, and exports.
+- Optional NVIDIA-powered Smart Rename.
+
+## Interfaces
+
+| Interface | Best For | Command |
+| --- | --- | --- |
+| CLI | Fast local automation and dry runs | `smart-organizer "D:\Downloads" --dry-run` |
+| Desktop GUI | Reviewable interactive organization | `smart-organizer-gui` |
+| Streamlit | Browser-based demo and uploads | `streamlit run streamlit_app.py` |
+| Watch Mode | Continuous folder monitoring | `smart-organizer-watch "D:\Downloads"` |
+
+## Quick Start
 
 ```bash
 git clone https://github.com/sarawagh27/smart-ai-file-organizer.git
 cd smart-ai-file-organizer
-pip install -r requirements.txt
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install --upgrade pip
+python -m pip install -e .
 ```
 
----
+Install optional AI, web, and OCR extras only when needed:
 
-## 🚀 Usage
-
-### Web App (no installation)
-👉 **[smart-ai-file-organizer.streamlit.app](https://smart-ai-file-organizer.streamlit.app)**
-
-### Desktop GUI
 ```bash
+python -m pip install -e ".[ai,web]"
+python -m pip install -e ".[ocr]"
+```
+
+## Usage
+
+Preview organization without moving files:
+
+```bash
+smart-organizer "D:\Downloads" --dry-run
+```
+
+Organize a folder:
+
+```bash
+smart-organizer "D:\Downloads"
+```
+
+Include subfolders:
+
+```bash
+smart-organizer "D:\Downloads" --recursive
+```
+
+Enable AI-powered filenames:
+
+```bash
+smart-organizer "D:\Downloads" --smart-rename
+```
+
+Undo the last run:
+
+```bash
+smart-organizer-undo "D:\Downloads"
+```
+
+Launch interfaces directly:
+
+```bash
+smart-organizer-gui
+smart-organizer-watch "D:\Downloads"
+streamlit run streamlit_app.py
+```
+
+Python entry points still work:
+
+```bash
+python main.py "D:\Downloads" --dry-run
 python gui.py
 ```
 
-### CLI
-```bash
-python main.py "D:\Downloads"                    # organise
-python main.py "D:\Downloads" --dry-run          # preview
-python main.py "D:\Downloads" --recursive        # sub-folders
-python main.py "D:\Downloads" --smart-rename     # AI rename
-python main.py "D:\Downloads" --undo             # undo last run
-```
+## Configuration
 
----
-
-## 🏷️ AI Smart Rename
-
-Renames files based on their content using the **NVIDIA free API**.
-
-```
-scan0023.pdf         →  Invoice_Amazon_Mar2024_1299.pdf
-doc_final_v3.docx    →  Resume_Software_Engineer_2024.docx
-untitled_notes.txt   →  AI_Transformer_Research_Notes.txt
-```
-
-**Setup:**
-1. Get free key at **https://build.nvidia.com/models**
-2. Copy `config.example.json` → `config.json`
-3. Add your key to `config.json` under `smart_rename.api_key`
-
----
-
-## 📂 Before & After
-
-**Before:**
-```
-Downloads/
-├── scan0023.pdf
-├── doc_final_v3.docx
-├── notes.txt
-├── budget.xlsx
-└── contract.pdf
-```
-
-**After:**
-```
-Downloads/
-├── Finance/   └── Invoice_Amazon_Mar2024_1299.pdf
-├── Resume/    └── Resume_Software_Engineer_2024.docx
-├── AI/        └── AI_Transformer_Research_Notes.txt
-├── Finance/   └── Budget_Annual_2024.xlsx
-└── Legal/     └── Legal_NDA_Contract_Acme.pdf
-```
-
----
-
-## 🧪 Tests
+`config.example.json` is the committed template. For local customization:
 
 ```bash
-python -m pytest tests/ -v
+copy config.example.json config.json
 ```
-Expected: **40 passed**
 
----
+`config.json` is ignored by git because it can contain private API keys and
+personal category data. The app falls back to `config.example.json` when no
+local config exists.
 
-## ⚙️ Customising Categories
+Smart Rename can read the NVIDIA key from either:
+
+- `NVIDIA_API_KEY`
+- `smart_rename.api_key` in local `config.json`
+
+## AI Smart Rename
+
+Smart Rename uses the NVIDIA OpenAI-compatible API to generate cleaner filenames
+from extracted document text.
+
+Setup:
+
+1. Get an API key from `https://build.nvidia.com/models`.
+2. Copy `config.example.json` to `config.json`.
+3. Add your key under `smart_rename.api_key`, or set `NVIDIA_API_KEY`.
+4. Run with `--smart-rename`.
+
+## Tech Stack
+
+| Layer | Technology |
+| --- | --- |
+| Language | Python 3.10+ |
+| ML Model | sentence-transformers (`all-MiniLM-L6-v2`) |
+| Fallback Classifier | TF-IDF + Multinomial Naive Bayes |
+| AI Smart Rename | NVIDIA NIM API (`meta/llama-3.1-8b-instruct`) |
+| Language Detection | langdetect |
+| Web App | Streamlit |
+| Desktop GUI | Tkinter |
+| File Extraction | PyPDF2, python-docx, openpyxl, python-pptx, extract-msg |
+| Watch Mode | watchdog |
+
+## Project Structure
+
+```text
+.
+|-- main.py                  # CLI entry point
+|-- gui.py                   # Tkinter desktop GUI
+|-- streamlit_app.py         # Streamlit web UI
+|-- organizer.py             # File organization pipeline
+|-- classifier.py            # Transformer/TF-IDF document classifier
+|-- search.py                # Semantic search index and query engine
+|-- duplicate_detector.py    # Content-hash duplicate detection
+|-- text_extractor.py        # File text extraction helpers
+|-- renamer.py               # Optional LLM-powered file renaming
+|-- watcher.py               # Real-time watch mode
+|-- undo.py                  # Undo moved files from organizer logs
+|-- config.example.json      # Safe committed config template
+`-- tests/                   # Pytest suite
+```
+
+## Development
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest
+```
+
+The test suite sets `SMART_ORGANIZER_DISABLE_TRANSFORMERS=1` so CI and local
+tests stay fast and offline-friendly. Install the `ai` extra and unset that
+environment variable when you want to exercise the transformer path manually.
+
+## Customizing Categories
 
 Copy `config.example.json` to `config.json` and edit:
 
@@ -216,23 +250,23 @@ Copy `config.example.json` to `config.json` and edit:
 }
 ```
 
-Or use the **⚙️ Categories** button in the desktop GUI.
+You can also use the Categories button in the desktop GUI.
 
----
+## Security Notes
 
-## 🤝 Contributing
+- Do not commit `config.json`, `.env`, logs, indexes, local documents, or API keys.
+- Rotate any key that has ever been committed or shared.
+- Review organized folders before running live moves on important data; use
+  `--dry-run` first.
 
-1. Fork the repo
-2. Create a branch: `git checkout -b feature/your-feature`
-3. Commit: `git commit -m "Add: description"`
-4. Push and open a Pull Request
+## Contributing
 
----
+1. Fork the repository.
+2. Create a branch: `git checkout -b feature/your-feature`.
+3. Make a focused change and add tests where useful.
+4. Run `python -m pytest`.
+5. Push and open a pull request.
 
-## 📄 License
+## License
 
-MIT — free to use and modify.
-
----
-
-<p align="center">Made with ❤️ and Python</p>
+MIT. See [LICENSE](LICENSE).
