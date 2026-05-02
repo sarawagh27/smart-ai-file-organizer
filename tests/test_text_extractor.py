@@ -4,14 +4,9 @@ tests/test_text_extractor.py
 Unit tests for text extraction functions.
 """
 
-import sys
-from pathlib import Path
-
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from text_extractor import extract_text, extract_from_txt
+from smart_ai_file_organizer.text_extractor import extract_from_txt, extract_text
 
 
 class TestExtractFromTxt:

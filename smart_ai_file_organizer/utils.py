@@ -15,8 +15,14 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Optional
 
-DEFAULT_CONFIG = Path(__file__).parent / "config.json"
-EXAMPLE_CONFIG = Path(__file__).parent / "config.example.json"
+PACKAGE_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = PACKAGE_ROOT.parent
+DEFAULT_CONFIG = PROJECT_ROOT / "config.json"
+EXAMPLE_CONFIG = (
+    PROJECT_ROOT / "config.example.json"
+    if (PROJECT_ROOT / "config.example.json").exists()
+    else PACKAGE_ROOT / "config.example.json"
+)
 
 
 def _load_config() -> dict:

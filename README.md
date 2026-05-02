@@ -20,7 +20,8 @@
   <a href="#quick-start">Quick Start</a> ·
   <a href="#interfaces">Interfaces</a> ·
   <a href="#demo">Demo</a> ·
-  <a href="#usage">Usage</a>
+  <a href="#usage">Usage</a> ·
+  <a href="ROADMAP.md">Roadmap</a>
 </p>
 
 ## Why This Project?
@@ -119,6 +120,9 @@ python -m pip install -e ".[ai,web]"
 python -m pip install -e ".[ocr]"
 ```
 
+`pyproject.toml` is the canonical dependency manifest. `requirements.txt` is
+kept only as a small deployment fallback for platforms that expect it.
+
 ## Usage
 
 Preview organization without moving files:
@@ -213,18 +217,24 @@ Setup:
 
 ```text
 .
-|-- main.py                  # CLI entry point
-|-- gui.py                   # Tkinter desktop GUI
-|-- streamlit_app.py         # Streamlit web UI
-|-- organizer.py             # File organization pipeline
-|-- classifier.py            # Transformer/TF-IDF document classifier
-|-- search.py                # Semantic search index and query engine
-|-- duplicate_detector.py    # Content-hash duplicate detection
-|-- text_extractor.py        # File text extraction helpers
-|-- renamer.py               # Optional LLM-powered file renaming
-|-- watcher.py               # Real-time watch mode
-|-- undo.py                  # Undo moved files from organizer logs
+|-- smart_ai_file_organizer/ # Application package
+|   |-- main.py              # CLI entry point
+|   |-- gui.py               # Tkinter desktop GUI
+|   |-- streamlit_app.py     # Streamlit web UI
+|   |-- organizer.py         # File organization pipeline
+|   |-- classifier.py        # Transformer/TF-IDF document classifier
+|   |-- search.py            # Semantic search index and query engine
+|   |-- duplicate_detector.py
+|   |-- text_extractor.py
+|   |-- renamer.py
+|   |-- watcher.py
+|   `-- undo.py
+|-- main.py                  # Compatibility wrapper
+|-- gui.py                   # Compatibility wrapper
+|-- streamlit_app.py         # Streamlit Cloud wrapper
 |-- config.example.json      # Safe committed config template
+|-- CHANGELOG.md
+|-- ROADMAP.md
 `-- tests/                   # Pytest suite
 ```
 
@@ -232,12 +242,17 @@ Setup:
 
 ```bash
 python -m pip install -e ".[dev]"
-python -m pytest
+python -m ruff check .
+python -m pytest --cov=smart_ai_file_organizer --cov-report=term-missing
+python -m build
 ```
 
 The test suite sets `SMART_ORGANIZER_DISABLE_TRANSFORMERS=1` so CI and local
 tests stay fast and offline-friendly. Install the `ai` extra and unset that
 environment variable when you want to exercise the transformer path manually.
+
+Release notes live in [`CHANGELOG.md`](CHANGELOG.md), and planned work lives in
+[`ROADMAP.md`](ROADMAP.md).
 
 ## Customizing Categories
 

@@ -25,9 +25,14 @@ from sklearn.pipeline import Pipeline
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).parent
+PACKAGE_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = PACKAGE_ROOT.parent
 DEFAULT_CONFIG = PROJECT_ROOT / "config.json"
-EXAMPLE_CONFIG = PROJECT_ROOT / "config.example.json"
+EXAMPLE_CONFIG = (
+    PROJECT_ROOT / "config.example.json"
+    if (PROJECT_ROOT / "config.example.json").exists()
+    else PACKAGE_ROOT / "config.example.json"
+)
 
 
 def load_config(config_path: Path = DEFAULT_CONFIG) -> Dict:

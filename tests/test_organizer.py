@@ -5,14 +5,9 @@ Integration tests for FileOrganizer — uses dry_run=True so no files
 are ever actually moved during testing.
 """
 
-import sys
-from pathlib import Path
-
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from organizer import FileOrganizer
+from smart_ai_file_organizer.organizer import FileOrganizer
 
 
 @pytest.fixture

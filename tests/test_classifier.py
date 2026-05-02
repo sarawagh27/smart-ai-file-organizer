@@ -4,15 +4,9 @@ tests/test_classifier.py
 Unit tests for the DocumentClassifier.
 """
 
-import sys
-from pathlib import Path
-
 import pytest
 
-# Allow imports from the project root
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from classifier import DocumentClassifier, load_config
+from smart_ai_file_organizer.classifier import DocumentClassifier, load_config
 
 
 class TestLoadConfig:

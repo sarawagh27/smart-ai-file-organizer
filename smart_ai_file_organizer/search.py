@@ -76,7 +76,7 @@ class SemanticSearch:
         -------
         int — number of files indexed
         """
-        from text_extractor import extract_text, SUPPORTED_EXTENSIONS
+        from .text_extractor import SUPPORTED_EXTENSIONS, extract_text
 
         if not self.target_dir.exists() or not self.target_dir.is_dir():
             logger.warning(
@@ -88,9 +88,12 @@ class SemanticSearch:
             return 0
 
         # Load config for categories
-        config_path = Path(__file__).parent / "config.json"
+        project_root = Path(__file__).resolve().parent.parent
+        config_path = project_root / "config.json"
         if not config_path.exists():
-            config_path = Path(__file__).parent / "config.example.json"
+            config_path = project_root / "config.example.json"
+        if not config_path.exists():
+            config_path = Path(__file__).resolve().parent / "config.example.json"
 
         try:
             with open(config_path) as f:

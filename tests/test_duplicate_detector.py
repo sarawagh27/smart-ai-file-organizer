@@ -4,14 +4,9 @@ tests/test_duplicate_detector.py
 Unit tests for the DuplicateDetector.
 """
 
-import sys
-from pathlib import Path
-
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from duplicate_detector import DuplicateDetector, compute_md5
+from smart_ai_file_organizer.duplicate_detector import DuplicateDetector, compute_md5
 
 
 class TestComputeMd5:

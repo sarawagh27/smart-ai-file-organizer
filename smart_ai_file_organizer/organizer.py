@@ -13,11 +13,11 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from classifier import DocumentClassifier
-from renamer import SmartRenamer
-from duplicate_detector import DuplicateDetector
-from text_extractor import extract_text
-from utils import (
+from .classifier import DocumentClassifier
+from .duplicate_detector import DuplicateDetector
+from .renamer import SmartRenamer
+from .text_extractor import extract_text
+from .utils import (
     create_category_folders,
     safe_move,
     scan_directory,
