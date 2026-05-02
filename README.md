@@ -21,7 +21,7 @@
   <a href="#interfaces">Interfaces</a> ·
   <a href="#demo">Demo</a> ·
   <a href="#usage">Usage</a> ·
-  <a href="ROADMAP.md">Roadmap</a>
+  <a href="docs/ROADMAP.md">Roadmap</a>
 </p>
 
 ## Why This Project?
@@ -163,11 +163,11 @@ smart-organizer-watch "D:\Downloads"
 streamlit run streamlit_app.py
 ```
 
-Python entry points still work:
+Wrapper scripts still work when you need to run without console commands:
 
 ```bash
-python main.py "D:\Downloads" --dry-run
-python gui.py
+python scripts/main.py "D:\Downloads" --dry-run
+python scripts/gui.py
 ```
 
 ## Configuration
@@ -229,12 +229,10 @@ Setup:
 |   |-- renamer.py
 |   |-- watcher.py
 |   `-- undo.py
-|-- main.py                  # Compatibility wrapper
-|-- gui.py                   # Compatibility wrapper
 |-- streamlit_app.py         # Streamlit Cloud wrapper
 |-- config.example.json      # Safe committed config template
-|-- CHANGELOG.md
-|-- ROADMAP.md
+|-- scripts/                 # Optional local wrapper scripts
+|-- docs/                    # Roadmap, changelog, and media guidance
 `-- tests/                   # Pytest suite
 ```
 
@@ -251,8 +249,8 @@ The test suite sets `SMART_ORGANIZER_DISABLE_TRANSFORMERS=1` so CI and local
 tests stay fast and offline-friendly. Install the `ai` extra and unset that
 environment variable when you want to exercise the transformer path manually.
 
-Release notes live in [`CHANGELOG.md`](CHANGELOG.md), and planned work lives in
-[`ROADMAP.md`](ROADMAP.md).
+Release notes live in [`docs/CHANGELOG.md`](docs/CHANGELOG.md), and planned
+work lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Customizing Categories
 
@@ -283,6 +281,8 @@ You can also use the Categories button in the desktop GUI.
 3. Make a focused change and add tests where useful.
 4. Run `python -m pytest`.
 5. Push and open a pull request.
+
+Full contribution guidance lives in [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md).
 
 ## License
 

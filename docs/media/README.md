@@ -11,3 +11,6 @@ Recommended files from real, non-sensitive project runs:
 
 Do not commit generated fake demo folders, staged sample documents, screenshots
 containing private filenames, API keys, local paths, or personal documents.
+
+Local sample files can live in `docs/media/demo-files/`; that folder is ignored
+so README media stays intentional.

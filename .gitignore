@@ -21,6 +21,7 @@ build/
 *.log
 organizer.log
 .search_index.pkl
+.omx/
 
 # Environment variables and private config
 .env
@@ -49,3 +50,7 @@ desktop.ini
 *.tar.gz
 *.tmp
 *.bak
+
+# Local demo/scratch assets
+demo_files/
+docs/media/demo-files/
