@@ -41,19 +41,21 @@ safer workflow for turning chaos into structure:
 
 ## Demo
 
-Record a 10-20 second walkthrough and save it as `docs/demo.gif`. Suggested flow:
-select a folder, run dry-run, organize files, then search for a document by
-meaning.
+Record a 10-20 second walkthrough from a real local folder that you are safe to
+show publicly. Suggested flow: select a folder, run dry-run, organize files,
+then search for a document by meaning.
 
 ```text
-docs/demo.gif
+docs/media/demo.gif
 ```
 
 When the GIF is ready, add it below:
 
 ```markdown
-![Smart AI File Organizer demo](docs/demo.gif)
+![Smart AI File Organizer demo](docs/media/demo.gif)
 ```
+
+Media capture guidance lives in [`docs/media/README.md`](docs/media/README.md).
 
 ## Before vs After
 
