@@ -17,10 +17,10 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> ·
-  <a href="#interfaces">Interfaces</a> ·
-  <a href="#demo">Demo</a> ·
-  <a href="#usage">Usage</a> ·
+  <a href="#quick-start">Quick Start</a> &middot;
+  <a href="#interfaces">Interfaces</a> &middot;
+  <a href="#demo">Demo</a> &middot;
+  <a href="#usage">Usage</a> &middot;
   <a href="docs/ROADMAP.md">Roadmap</a>
 </p>
 
@@ -44,8 +44,9 @@ safer workflow for turning chaos into structure:
 
 ![Smart AI File Organizer demo](docs/media/demo.gif)
 
-The demo uses local sample files to show the dry-run preview, live organize
-step, and final category folders.
+The demo GIF is captured from the real Streamlit app. It shows file upload,
+text classification, result export, semantic search, and category management
+screens.
 
 ## Before vs After
 
