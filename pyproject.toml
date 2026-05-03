@@ -37,7 +37,7 @@ dependencies = [
 ai = ["sentence-transformers>=2.7.0"]
 ocr = ["pytesseract>=0.3.10"]
 web = [
-  "streamlit>=1.32.0",
+  "streamlit>=1.32.0,<1.56",
 ]
 dev = [
   "build>=1.2.0",
@@ -48,7 +48,7 @@ dev = [
 all = [
   "sentence-transformers>=2.7.0",
   "pytesseract>=0.3.10",
-  "streamlit>=1.32.0",
+  "streamlit>=1.32.0,<1.56",
 ]
 
 [project.scripts]
