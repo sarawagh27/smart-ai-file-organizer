@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # -- Page config ---------------------------------------------------------------
 st.set_page_config(
     page_title="Smart AI File Organizer",
-    page_icon="SAFO",
+    page_icon=":open_file_folder:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
