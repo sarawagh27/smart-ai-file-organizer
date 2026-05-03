@@ -1,3 +1,4 @@
 # Deployment fallback for platforms that still prefer requirements.txt.
 # pyproject.toml is the canonical dependency source.
+streamlit>=1.32.0,<1.56
 -e .[web]
