@@ -49,6 +49,22 @@ The demo GIF is captured from the real Streamlit app. It shows file upload,
 text classification, result export, semantic search, and category management
 screens.
 
+Screenshot capture targets for the CLI safety flow and desktop GUI are tracked
+in [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) so release demos
+stay tied to verified behavior.
+
+## Safety Demo
+
+```bash
+smart-organizer "D:\Downloads" --dry-run
+smart-organizer "D:\Downloads" --yes
+smart-organizer "D:\Downloads" --undo
+```
+
+Live runs write structured history to
+`D:\Downloads\.smart-organizer\history.jsonl`. Undo restores the latest run from
+that history and skips files whose contents changed after organization.
+
 ## Before vs After
 
 ```text
@@ -258,7 +274,8 @@ widgets, and watch-mode event loops are excluded until their business logic is
 extracted behind smaller testable adapters.
 
 Release notes live in [`docs/CHANGELOG.md`](docs/CHANGELOG.md), the architecture
-overview lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and planned
+overview lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), release prep
+lives in [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md), and planned
 work lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Customizing Categories

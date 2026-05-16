@@ -6,6 +6,11 @@ All notable changes to this project will be documented here.
 
 ### Added
 
+- Testable category-management and watch-processing service layers that keep UI
+  files thinner while preserving public commands.
+- Coverage XML upload artifacts in GitHub Actions.
+- Release checklist covering verification, demo refresh, changelog/versioning,
+  and optional Windows executable packaging.
 - Structured `.smart-organizer/history.jsonl` operation history with run ids,
   hashes, timestamps, action types, and source/destination paths.
 - CLI options for `--config`, `--history`, `--run-id`, `--yes`, and `--version`.
@@ -16,6 +21,10 @@ All notable changes to this project will be documented here.
 
 ### Changed
 
+- Watch mode now delegates file filtering and move/history recording to a
+  shared service with direct tests.
+- Category Manager now delegates add/delete/update keyword rules to a shared
+  service with direct tests.
 - Undo now reads structured history first and uses `organizer.log` only as a
   legacy fallback.
 - Semantic search cache now stores file size, mtime, and content hash metadata

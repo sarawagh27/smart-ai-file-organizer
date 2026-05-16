@@ -34,7 +34,13 @@ jobs:
       - name: Run tests
         env:
           SMART_ORGANIZER_DISABLE_TRANSFORMERS: "1"
-        run: python -m pytest --cov=smart_ai_file_organizer --cov-report=term-missing
+        run: python -m pytest --cov=smart_ai_file_organizer --cov-report=term-missing --cov-report=xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: coverage.xml
 
       - name: Build package
         run: python -m build

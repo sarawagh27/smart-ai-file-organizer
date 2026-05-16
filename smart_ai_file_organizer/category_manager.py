@@ -17,10 +17,11 @@ Usage
     CategoryManager(parent_window, config_path="config.json")
 """
 
-import json
 import tkinter as tk
 from pathlib import Path
 from tkinter import font, messagebox, scrolledtext, ttk
+
+from .category_service import CategoryService, CategoryServiceError
 
 BG      = "#1e1e2e"
 SURFACE = "#2a2a3e"
@@ -50,7 +51,8 @@ class CategoryManager(tk.Toplevel):
         self.resizable(True, True)
 
         self.config_path = Path(config_path)
-        self._config     = self._load_config()
+        self._service    = CategoryService(self.config_path)
+        self._config     = self._service.load()
 
         self._font_title = font.Font(family="Segoe UI", size=13, weight="bold")
         self._font_label = font.Font(family="Segoe UI", size=10)
@@ -64,14 +66,6 @@ class CategoryManager(tk.Toplevel):
         self._refresh_list()
 
     # ── Config helpers ───────────────────────────────────────────────────────
-    def _load_config(self) -> dict:
-        with open(self.config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-
-    def _save_config(self) -> None:
-        with open(self.config_path, "w", encoding="utf-8") as f:
-            json.dump(self._config, f, indent=2, ensure_ascii=False)
-
     # ── UI ───────────────────────────────────────────────────────────────────
     def _build_ui(self):
         # Header
@@ -221,12 +215,11 @@ class CategoryManager(tk.Toplevel):
                 messagebox.showwarning("Exists", f"Category '{name}' already exists.", parent=dialog)
                 return
 
-            # Add to config
-            self._config.setdefault("categories", []).append(name)
-            self._config.setdefault("training_data", {})[name] = [
-                f"add your keywords for {name} here"
-            ]
-            self._save_config()
+            try:
+                self._config = self._service.add_category(name)
+            except CategoryServiceError as exc:
+                messagebox.showwarning("Invalid Category", str(exc), parent=dialog)
+                return
             self._refresh_list()
 
             # Select the new category
@@ -266,11 +259,11 @@ class CategoryManager(tk.Toplevel):
         if not ok:
             return
 
-        # Remove from config
-        if cat in self._config.get("categories", []):
-            self._config["categories"].remove(cat)
-        self._config.get("training_data", {}).pop(cat, None)
-        self._save_config()
+        try:
+            self._config = self._service.delete_category(cat)
+        except CategoryServiceError as exc:
+            messagebox.showwarning("Cannot Delete", str(exc), parent=self)
+            return
 
         # Reset editor
         self._selected_cat = None
@@ -298,8 +291,7 @@ class CategoryManager(tk.Toplevel):
                                    parent=self)
             return
 
-        self._config.setdefault("training_data", {})[cat] = keywords
-        self._save_config()
+        self._config = self._service.update_keywords(cat, keywords)
 
         self._save_lbl.configure(text=f"✅ Saved {len(keywords)} keyword(s)")
         self.after(3000, lambda: self._save_lbl.configure(text=""))
