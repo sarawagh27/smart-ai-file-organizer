@@ -36,7 +36,8 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from .classifier import DocumentClassifier
-from .duplicate_detector import DuplicateDetector
+from .duplicate_detector import DuplicateDetector, compute_md5
+from .history import OperationHistory, new_run_id
 from .text_extractor import SUPPORTED_EXTENSIONS, extract_text
 from .utils import create_category_folders, safe_move, setup_logging
 
@@ -57,6 +58,7 @@ class FileOrganizerHandler(FileSystemEventHandler):
         duplicate_detector: DuplicateDetector,
         delay: float = 2.0,
         recursive: bool = False,
+        history_path: str | Path | None = None,
     ):
         super().__init__()
         self.target_dir        = Path(target_dir).resolve()
@@ -64,6 +66,7 @@ class FileOrganizerHandler(FileSystemEventHandler):
         self.duplicate_detector = duplicate_detector
         self.delay             = delay      # seconds to wait before processing
         self.recursive         = recursive
+        self.history           = OperationHistory.for_target(self.target_dir, history_path)
         self._processing       = set()     # track files currently being processed
 
     def on_created(self, event):
@@ -146,7 +149,16 @@ class FileOrganizerHandler(FileSystemEventHandler):
         # Move to category folder
         dest_dir = str(self.target_dir / category)
         try:
-            safe_move(filepath, dest_dir)
+            file_hash = compute_md5(filepath)
+            dest_path = safe_move(filepath, dest_dir)
+            self.history.record(
+                run_id=new_run_id(),
+                action="move",
+                source_path=filepath,
+                destination_path=dest_path,
+                source_hash=file_hash,
+                destination_hash=file_hash,
+            )
             logger.info("  ✅ Moved to %s/", category)
         except Exception as exc:
             logger.error("Move failed for '%s': %s", filename, exc)
@@ -162,7 +174,13 @@ class FolderWatcher:
     watcher.start()   # blocks until Ctrl+C
     """
 
-    def __init__(self, target_dir: str, delay: float = 2.0, recursive: bool = False):
+    def __init__(
+        self,
+        target_dir: str,
+        delay: float = 2.0,
+        recursive: bool = False,
+        history_path: str | Path | None = None,
+    ):
         self.target_dir = str(Path(target_dir).resolve())
         self.delay      = delay
         self.recursive  = recursive
@@ -186,6 +204,7 @@ class FolderWatcher:
             duplicate_detector = self.duplicate_detector,
             delay             = self.delay,
             recursive         = self.recursive,
+            history_path       = history_path,
         )
         self.observer = Observer()
 
@@ -243,6 +262,10 @@ def parse_args() -> argparse.Namespace:
         help="Also watch sub-folders.",
     )
     parser.add_argument(
+        "--history",
+        help="Path to the structured operation history file.",
+    )
+    parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="Enable DEBUG-level logging.",
     )
@@ -264,6 +287,7 @@ def main() -> int:
         target_dir = str(target),
         delay      = args.delay,
         recursive  = args.recursive,
+        history_path = args.history,
     )
     watcher.start()
     return 0

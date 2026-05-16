@@ -26,6 +26,7 @@ from pathlib import Path
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parent.parent
+from smart_ai_file_organizer.config import ConfigError, EXAMPLE_CONFIG, load_config
 
 # -- Page config ---------------------------------------------------------------
 st.set_page_config(
@@ -80,7 +81,7 @@ CAT_ICONS = {
 }
 SUPPORTED = [".pdf", ".txt", ".docx", ".xlsx", ".pptx",
              ".csv", ".eml", ".msg", ".zip", ".png", ".jpg", ".jpeg"]
-CONFIG_PATH = ROOT / "config.example.json"
+CONFIG_PATH = EXAMPLE_CONFIG
 
 # -- Session state init --------------------------------------------------------
 if "results" not in st.session_state:
@@ -91,14 +92,14 @@ if "clf" not in st.session_state:
 # -- Load classifier -----------------------------------------------------------
 @st.cache_resource(show_spinner="Loading AI model...")
 def load_classifier():
-    from .classifier import DocumentClassifier
-    clf = DocumentClassifier()
+    from smart_ai_file_organizer.classifier import DocumentClassifier
+    clf = DocumentClassifier(config_path=CONFIG_PATH)
     clf.train()
     return clf
 
 @st.cache_resource(show_spinner=False)
 def get_lang_tools():
-    from .classifier import LANGUAGE_NAMES, detect_language
+    from smart_ai_file_organizer.classifier import LANGUAGE_NAMES, detect_language
     return detect_language, LANGUAGE_NAMES
 
 def get_clf():
@@ -153,8 +154,8 @@ if page == "Classify Files":
             clf = get_clf()
             detect_language, LANGUAGE_NAMES = get_lang_tools()
 
-            from .renamer import SmartRenamer
-            from .text_extractor import extract_text
+            from smart_ai_file_organizer.renamer import SmartRenamer
+            from smart_ai_file_organizer.text_extractor import extract_text
             renamer = SmartRenamer(api_key=nvidia_key, enabled=smart_rename and bool(nvidia_key))
 
             progress = st.progress(0, text="Classifying...")
@@ -427,7 +428,7 @@ elif page == "Semantic Search":
         else:
             with st.spinner("Building search index... this may take a moment."):
                 try:
-                    from .search import SemanticSearch
+                    from smart_ai_file_organizer.search import SemanticSearch
                     engine = SemanticSearch(target_dir=folder_path)
                     n = engine.build_index(force=True)
                     st.session_state["search_engine"] = engine
@@ -445,7 +446,7 @@ elif page == "Semantic Search":
             if "search_engine" not in st.session_state:
                 with st.spinner("Loading index..."):
                     try:
-                        from .search import SemanticSearch
+                        from smart_ai_file_organizer.search import SemanticSearch
                         engine = SemanticSearch(target_dir=folder_path)
                         n = engine.build_index()
                         st.session_state["search_engine"] = engine
@@ -492,9 +493,8 @@ elif page == "Category Manager":
 
     # Load config
     try:
-        with open(CONFIG_PATH) as f:
-            cfg = json.load(f)
-    except Exception:
+        cfg = load_config(CONFIG_PATH)
+    except ConfigError:
         cfg = {"categories": list(CAT_COLORS.keys()), "training_data": {}}
 
     if "session_cfg" not in st.session_state:

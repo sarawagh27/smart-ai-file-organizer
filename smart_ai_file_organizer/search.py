@@ -23,16 +23,28 @@ Usage
     # Returns: [(filename, category, score, preview), ...]
 """
 
-import json
 import logging
 from pathlib import Path
 from typing import List, Tuple, Optional
 import pickle
 
+from .duplicate_detector import compute_md5
+from .config import ConfigError, load_config
+
 logger = logging.getLogger(__name__)
 
 # Cache file to avoid re-indexing every time
 INDEX_FILE = ".search_index.pkl"
+CACHE_SCHEMA_VERSION = 2
+
+
+def _file_signature(filepath: Path) -> dict:
+    stat = filepath.stat()
+    return {
+        "size": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
+        "content_hash": compute_md5(str(filepath)),
+    }
 
 
 class SemanticSearch:
@@ -87,35 +99,30 @@ class SemanticSearch:
             self._is_built = False
             return 0
 
-        # Load config for categories
-        project_root = Path(__file__).resolve().parent.parent
-        config_path = project_root / "config.json"
-        if not config_path.exists():
-            config_path = project_root / "config.example.json"
-        if not config_path.exists():
-            config_path = Path(__file__).resolve().parent / "config.example.json"
-
         try:
-            with open(config_path) as f:
-                cfg = json.load(f)
+            cfg = load_config()
             categories = cfg.get("categories", [])
-        except Exception:
+        except ConfigError:
             categories = []
 
-        # Try loading cached index
+        # Try loading cached index. Old cache schemas are ignored and rebuilt.
         cache_path = self.target_dir / INDEX_FILE
+        cached_by_path = {}
         if not force and cache_path.exists():
             try:
                 with open(cache_path, "rb") as f:
                     cached = pickle.load(f)
-                self._index    = cached["index"]
-                self._is_built = True
-                logger.info("Loaded cached search index (%d files)", len(self._index))
-                return len(self._index)
-            except Exception:
-                pass
+                if cached.get("schema_version") == CACHE_SCHEMA_VERSION:
+                    cached_by_path = {
+                        item["path"]: item
+                        for item in cached.get("index", [])
+                        if "path" in item and "content_hash" in item
+                    }
+                else:
+                    logger.info("Ignoring old search cache schema; rebuilding.")
+            except Exception as exc:
+                logger.info("Ignoring unreadable search cache: %s", exc)
 
-        self._load_model()
         self._index = []
 
         # Scan category subfolders
@@ -137,6 +144,14 @@ class SemanticSearch:
 
         for filepath, category in files_found:
             try:
+                signature = _file_signature(filepath)
+                cached_item = cached_by_path.get(str(filepath))
+                if cached_item and all(
+                    cached_item.get(key) == value for key, value in signature.items()
+                ):
+                    self._index.append(cached_item)
+                    continue
+
                 text = extract_text(str(filepath))
                 if not text.strip():
                     continue
@@ -148,28 +163,33 @@ class SemanticSearch:
                     "filename": filepath.name,
                     "category": category,
                     "preview":  preview,
+                    **signature,
                 })
             except Exception as exc:
                 logger.warning("Skipping %s: %s", filepath.name, exc)
 
-        if not texts:
+        if not texts and not self._index:
             return 0
 
         # Batch encode all texts
-        import numpy as np
-        embeddings = self._model.encode(
-            texts, normalize_embeddings=True,
-            show_progress_bar=False, batch_size=32,
-        )
+        if texts:
+            self._load_model()
+            embeddings = self._model.encode(
+                texts, normalize_embeddings=True,
+                show_progress_bar=False, batch_size=32,
+            )
 
-        for meta, emb in zip(meta_items, embeddings):
-            meta["embedding"] = emb
-            self._index.append(meta)
+            for meta, emb in zip(meta_items, embeddings):
+                meta["embedding"] = emb
+                self._index.append(meta)
 
         # Save cache
         try:
             with open(cache_path, "wb") as f:
-                pickle.dump({"index": self._index}, f)
+                pickle.dump(
+                    {"schema_version": CACHE_SCHEMA_VERSION, "index": self._index},
+                    f,
+                )
             logger.info("Search index built and cached (%d files)", len(self._index))
         except Exception as e:
             logger.warning("Could not cache index: %s", e)

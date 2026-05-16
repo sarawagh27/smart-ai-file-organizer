@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from .classifier import DocumentClassifier
-from .duplicate_detector import DuplicateDetector
+from .duplicate_detector import DuplicateDetector, compute_md5
+from .history import OperationHistory, new_run_id
 from .renamer import SmartRenamer
 from .text_extractor import extract_text
 from .utils import (
@@ -46,13 +47,17 @@ class FileOrganizer:
         show_progress: bool = False,
         smart_rename: bool = False,
         api_key: str = "",
+        config_path: str | Path | None = None,
+        history_path: str | Path | None = None,
     ):
         self.target_dir    = str(Path(target_dir).resolve())
         self.dry_run       = dry_run
         self.recursive     = recursive
         self.show_progress = show_progress
+        self.run_id        = new_run_id()
+        self.history       = OperationHistory.for_target(self.target_dir, history_path)
 
-        self.classifier         = DocumentClassifier()
+        self.classifier         = DocumentClassifier(config_path=config_path)
         self.duplicate_detector = DuplicateDetector()
         self.renamer            = SmartRenamer(api_key=api_key, enabled=smart_rename)
 
@@ -148,7 +153,16 @@ class FileOrganizer:
                     while new_path.exists():
                         new_path = new_dir / f"{old_path.stem}_{counter}{old_path.suffix}"
                         counter += 1
+                    file_hash = compute_md5(str(old_path))
                     old_path.rename(new_path)
+                    self.history.record(
+                        run_id=self.run_id,
+                        action="move",
+                        source_path=old_path,
+                        destination_path=new_path,
+                        source_hash=file_hash,
+                        destination_hash=file_hash,
+                    )
 
                     # Update results record
                     self.results[i] = (fname, correct_category, conf, False, str(new_path))
@@ -220,15 +234,26 @@ class FileOrganizer:
         new_filename = self.renamer.rename(filename, text)
         if new_filename != filename and not self.dry_run:
             try:
-                new_filepath = str(Path(filepath).parent / new_filename)
-                Path(filepath).rename(new_filepath)
-                filepath = new_filepath
+                old_filepath = Path(filepath)
+                new_filepath = old_filepath.parent / new_filename
+                file_hash = compute_md5(str(old_filepath))
+                old_filepath.rename(new_filepath)
+                self.history.record(
+                    run_id=self.run_id,
+                    action="rename",
+                    source_path=old_filepath,
+                    destination_path=new_filepath,
+                    source_hash=file_hash,
+                    destination_hash=file_hash,
+                )
+                filepath = str(new_filepath)
                 filename = new_filename
             except Exception as exc:
                 logger.warning("Rename failed: %s", exc)
 
         dest_dir  = str(Path(self.target_dir) / category)
         dest_path = str(Path(dest_dir) / filename)
+        file_hash = compute_md5(filepath) if not self.dry_run else None
 
         # Move or simulate
         if self.dry_run:
@@ -236,6 +261,14 @@ class FileOrganizer:
         else:
             try:
                 dest_path = safe_move(filepath, dest_dir)
+                self.history.record(
+                    run_id=self.run_id,
+                    action="move",
+                    source_path=filepath,
+                    destination_path=dest_path,
+                    source_hash=file_hash,
+                    destination_hash=file_hash,
+                )
             except Exception as exc:
                 logger.error("Move failed for '%s': %s", filename, exc)
                 self._stats["errors"] += 1

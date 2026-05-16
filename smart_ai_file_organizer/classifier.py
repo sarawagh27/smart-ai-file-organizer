@@ -13,7 +13,6 @@ The model auto-selects:
   - If not installed         → fall back to TF-IDF + Naive Bayes
 """
 
-import json
 import logging
 import os
 from pathlib import Path
@@ -23,32 +22,12 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 
+from .config import DEFAULT_CONFIG, EXAMPLE_CONFIG, load_config, save_config
+
 logger = logging.getLogger(__name__)
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = PACKAGE_ROOT.parent
-DEFAULT_CONFIG = PROJECT_ROOT / "config.json"
-EXAMPLE_CONFIG = (
-    PROJECT_ROOT / "config.example.json"
-    if (PROJECT_ROOT / "config.example.json").exists()
-    else PACKAGE_ROOT / "config.example.json"
-)
-
-
-def load_config(config_path: Path = DEFAULT_CONFIG) -> Dict:
-    """Load private config, falling back to the committed example config."""
-    if not config_path.exists() and config_path == DEFAULT_CONFIG:
-        config_path = EXAMPLE_CONFIG
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
-    with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def save_config(config: Dict, config_path: Path = DEFAULT_CONFIG) -> None:
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=2, ensure_ascii=False)
 
 
 # ── Language detection ───────────────────────────────────────────────────────
@@ -158,7 +137,7 @@ class DocumentClassifier:
       - Corrections saved permanently to config.json
     """
 
-    def __init__(self, config_path: Path = DEFAULT_CONFIG):
+    def __init__(self, config_path: Path | str | None = None):
         self.config_path = config_path
         self.config      = load_config(config_path)
         self._is_trained = False

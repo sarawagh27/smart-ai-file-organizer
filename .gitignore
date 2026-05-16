@@ -21,6 +21,7 @@ build/
 *.log
 organizer.log
 .search_index.pkl
+.smart-organizer/
 .omx/
 
 # Environment variables and private config

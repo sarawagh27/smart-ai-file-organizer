@@ -34,6 +34,7 @@ Smart AI File Organizer reads the content inside each file, then gives you a
 safer workflow for turning chaos into structure:
 
 - Preview every move with dry-run mode before touching files.
+- Undo live runs from structured local history instead of fragile log parsing.
 - Classify documents by meaning using transformer embeddings or a fast offline
   TF-IDF fallback.
 - Detect duplicates by content hash instead of filename.
@@ -124,7 +125,7 @@ smart-organizer "D:\Downloads" --dry-run
 Organize a folder:
 
 ```bash
-smart-organizer "D:\Downloads"
+smart-organizer "D:\Downloads" --yes
 ```
 
 Include subfolders:
@@ -143,6 +144,15 @@ Undo the last run:
 
 ```bash
 smart-organizer-undo "D:\Downloads"
+```
+
+Use custom config/history paths for demos or tests:
+
+```bash
+smart-organizer "D:\Downloads" --dry-run --config .\config.example.json
+smart-organizer "D:\Downloads" --history "D:\Downloads\.smart-organizer\history.jsonl"
+smart-organizer "D:\Downloads" --undo --run-id <run-id>
+smart-organizer --version
 ```
 
 Launch interfaces directly:
@@ -171,6 +181,10 @@ copy config.example.json config.json
 `config.json` is ignored by git because it can contain private API keys and
 personal category data. The app falls back to `config.example.json` when no
 local config exists.
+
+Config loading is centralized and validated. Malformed JSON, empty category
+lists, missing training data, and invalid extension settings fail fast with a
+clear error instead of being silently ignored.
 
 Smart Rename can read the NVIDIA key from either:
 
@@ -239,7 +253,12 @@ The test suite sets `SMART_ORGANIZER_DISABLE_TRANSFORMERS=1` so CI and local
 tests stay fast and offline-friendly. Install the `ai` extra and unset that
 environment variable when you want to exercise the transformer path manually.
 
-Release notes live in [`docs/CHANGELOG.md`](docs/CHANGELOG.md), and planned
+Coverage focuses on the core package logic. Tkinter, Streamlit, category-manager
+widgets, and watch-mode event loops are excluded until their business logic is
+extracted behind smaller testable adapters.
+
+Release notes live in [`docs/CHANGELOG.md`](docs/CHANGELOG.md), the architecture
+overview lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and planned
 work lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Customizing Categories
@@ -263,6 +282,12 @@ You can also use the Categories button in the desktop GUI.
 - Rotate any key that has ever been committed or shared.
 - Review organized folders before running live moves on important data; use
   `--dry-run` first.
+- Live runs write `.smart-organizer/history.jsonl` locally with source,
+  destination, hash, action type, timestamp, and run id for reliable undo.
+- `organizer.log` is for diagnostics only; undo uses structured history and
+  refuses to restore a file whose content changed after the organize run.
+- Semantic search cache entries include file size, modified time, and content
+  hash metadata so changed/deleted files are reindexed instead of served stale.
 
 ## Contributing
 

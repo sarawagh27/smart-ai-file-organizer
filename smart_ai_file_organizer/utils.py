@@ -9,28 +9,18 @@ Shared utility helpers:
   - Summary printer
 """
 
-import json
 import logging
 import shutil
 from pathlib import Path
 from typing import Dict, List, Optional
 
-PACKAGE_ROOT = Path(__file__).resolve().parent
-PROJECT_ROOT = PACKAGE_ROOT.parent
-DEFAULT_CONFIG = PROJECT_ROOT / "config.json"
-EXAMPLE_CONFIG = (
-    PROJECT_ROOT / "config.example.json"
-    if (PROJECT_ROOT / "config.example.json").exists()
-    else PACKAGE_ROOT / "config.example.json"
-)
+from .config import ConfigError, load_config
 
 
 def _load_config() -> dict:
     try:
-        config_path = DEFAULT_CONFIG if DEFAULT_CONFIG.exists() else EXAMPLE_CONFIG
-        with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
+        return load_config()
+    except ConfigError:
         return {}
 
 

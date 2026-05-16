@@ -22,18 +22,15 @@ from tkinter import filedialog, font, messagebox, scrolledtext, ttk
 ROOT = Path(__file__).resolve().parent.parent
 
 from .category_manager import CategoryManager
+from .config import ConfigError, DEFAULT_CONFIG, EXAMPLE_CONFIG, load_config, save_config
 from .organizer import FileOrganizer
 from .search import SemanticSearch
 from .undo import undo_moves
 from .utils import scan_directory
 from .watcher import FolderWatcher
 
-CONFIG_PATH = ROOT / "config.json"
-EXAMPLE_CONFIG_PATH = (
-    ROOT / "config.example.json"
-    if (ROOT / "config.example.json").exists()
-    else Path(__file__).resolve().parent / "config.example.json"
-)
+CONFIG_PATH = DEFAULT_CONFIG
+EXAMPLE_CONFIG_PATH = EXAMPLE_CONFIG
 
 # ── theme palettes ──────────────────────────────────────────────────────────
 THEMES = {
@@ -116,10 +113,9 @@ class SmartOrganizerApp(tk.Tk):
     # ── theme helpers ────────────────────────────────────────────────────────
     def _load_theme_pref(self) -> str:
         try:
-            with open(CONFIG_PATH, encoding="utf-8") as f:
-                cfg = json.load(f)
+            cfg = load_config()
             return cfg.get("gui", {}).get("theme", "dark")
-        except Exception:
+        except ConfigError:
             return "dark"
 
     def _save_theme_pref(self, theme_name: str):
@@ -133,8 +129,7 @@ class SmartOrganizerApp(tk.Tk):
             else:
                 cfg = {}
             cfg.setdefault("gui", {})["theme"] = theme_name
-            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-                json.dump(cfg, f, indent=2)
+            save_config(cfg, CONFIG_PATH)
         except Exception:
             pass
 

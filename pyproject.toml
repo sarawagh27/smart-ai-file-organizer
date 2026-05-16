@@ -67,6 +67,14 @@ smart_ai_file_organizer = ["config.example.json"]
 testpaths = ["tests"]
 addopts = "-ra"
 
+[tool.coverage.run]
+omit = [
+  "smart_ai_file_organizer/category_manager.py",
+  "smart_ai_file_organizer/gui.py",
+  "smart_ai_file_organizer/streamlit_app.py",
+  "smart_ai_file_organizer/watcher.py",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
