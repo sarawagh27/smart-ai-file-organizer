@@ -3,7 +3,7 @@ text_extractor.py
 -----------------
 Extracts text from all supported file types:
   - TXT / CSV  : plain read
-  - PDF        : PyPDF2
+  - PDF        : pypdf (with OCR fallback for scanned PDFs)
   - DOCX       : python-docx
   - XLSX       : openpyxl
   - PPTX       : python-pptx
@@ -13,19 +13,47 @@ Extracts text from all supported file types:
   - Images     : pytesseract OCR (optional)
 """
 
+import io
 import logging
 import os
+import shutil
 
 logger = logging.getLogger(__name__)
 
-# ── Tesseract path (Windows) ─────────────────────────────────────────────────
-_TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-if os.path.exists(_TESSERACT_PATH):
+# Safety caps so one huge file cannot stall a run or exhaust memory.
+MAX_CHARS = 2_000_000
+MAX_PDF_PAGES = 50
+MAX_OCR_PAGES = 5
+MIN_USEFUL_TEXT = 20     # a PDF page layer shorter than this is treated as "scanned"
+
+
+# ── Tesseract (optional OCR) ─────────────────────────────────────────────────
+def _find_tesseract() -> str | None:
+    """Locate the tesseract binary: PATH first, then common install folders."""
+    found = shutil.which("tesseract")
+    if found:
+        return found
+    candidates = [
+        os.path.join(os.environ.get("ProgramFiles", r"C:\Program Files"), "Tesseract-OCR", "tesseract.exe"),
+        os.path.join(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"), "Tesseract-OCR", "tesseract.exe"),
+        "/opt/homebrew/bin/tesseract",
+        "/usr/local/bin/tesseract",
+    ]
+    return next((c for c in candidates if os.path.exists(c)), None)
+
+
+def _configure_tesseract() -> bool:
+    """Point pytesseract at the binary. Returns False if OCR is unavailable."""
     try:
         import pytesseract
-        pytesseract.pytesseract.tesseract_cmd = _TESSERACT_PATH
     except ImportError:
-        pass
+        return False
+    binary = _find_tesseract()
+    if binary is None:
+        return False
+    pytesseract.pytesseract.tesseract_cmd = binary
+    return True
+
 
 SUPPORTED_EXTENSIONS = {
     ".txt", ".csv", ".pdf", ".docx",
@@ -38,23 +66,47 @@ SUPPORTED_EXTENSIONS = {
 def extract_from_txt(filepath: str) -> str:
     try:
         with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
-            return f.read()
+            return f.read(MAX_CHARS)
     except Exception as e:
         logger.error("TXT extraction failed for %s: %s", filepath, e)
         return ""
 
 
+def _ocr_pdf_images(reader) -> str:
+    """OCR the embedded page images of a scanned PDF (first few pages only)."""
+    if not _configure_tesseract():
+        logger.info("Scanned PDF but OCR unavailable (install pytesseract + Tesseract).")
+        return ""
+    import pytesseract
+    from PIL import Image
+
+    parts = []
+    for page in reader.pages[:MAX_OCR_PAGES]:
+        try:
+            for image in page.images:
+                parts.append(pytesseract.image_to_string(Image.open(io.BytesIO(image.data))))
+        except Exception as e:
+            logger.debug("OCR skipped one PDF page image: %s", e)
+    return "\n".join(p for p in parts if p.strip())
+
+
 def extract_from_pdf(filepath: str) -> str:
     try:
-        import PyPDF2
+        try:
+            from pypdf import PdfReader
+        except ImportError:                      # older installs
+            from PyPDF2 import PdfReader
         parts = []
         with open(filepath, "rb") as f:
-            reader = PyPDF2.PdfReader(f)
-            for page in reader.pages:
+            reader = PdfReader(f)
+            for page in reader.pages[:MAX_PDF_PAGES]:
                 text = page.extract_text()
                 if text:
                     parts.append(text)
-        return "\n".join(parts)
+            text = "\n".join(parts)
+            if len(text.strip()) < MIN_USEFUL_TEXT:      # likely a scan → OCR fallback
+                text = _ocr_pdf_images(reader) or text
+        return text[:MAX_CHARS]
     except Exception as e:
         logger.error("PDF extraction failed for %s: %s", filepath, e)
         return ""
@@ -75,13 +127,20 @@ def extract_from_xlsx(filepath: str) -> str:
         import openpyxl
         wb = openpyxl.load_workbook(filepath, data_only=True, read_only=True)
         parts = []
+        total = 0
         for sheet in wb.worksheets:
             for row in sheet.iter_rows(values_only=True):
                 for cell in row:
                     if cell is not None:
-                        parts.append(str(cell))
+                        value = str(cell)
+                        parts.append(value)
+                        total += len(value) + 1
+                if total >= MAX_CHARS:
+                    break
+            if total >= MAX_CHARS:
+                break
         wb.close()
-        return " ".join(parts)
+        return " ".join(parts)[:MAX_CHARS]
     except Exception as e:
         logger.error("XLSX extraction failed for %s: %s", filepath, e)
         return ""
@@ -181,7 +240,8 @@ def extract_from_zip(filepath: str) -> str:
                 if ext in text_exts:
                     try:
                         with zf.open(name) as inner:
-                            content = inner.read().decode("utf-8", errors="ignore")
+                            # Bounded read: a "zip bomb" member never gets fully inflated.
+                            content = inner.read(8000).decode("utf-8", errors="ignore")
                             parts.append(content[:2000])  # cap per file
                             count += 1
                     except Exception:
@@ -197,8 +257,11 @@ def extract_from_image(filepath: str) -> str:
     try:
         import pytesseract
         from PIL import Image
-        img = Image.open(filepath)
-        return pytesseract.image_to_string(img)
+        if not _configure_tesseract():
+            logger.warning("Tesseract binary not found — skipping OCR for %s.", filepath)
+            return ""
+        with Image.open(filepath) as img:
+            return pytesseract.image_to_string(img)
     except ImportError:
         logger.warning(
             "pytesseract / Pillow not installed — skipping OCR for %s.", filepath

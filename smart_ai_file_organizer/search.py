@@ -23,19 +23,28 @@ Usage
     # Returns: [(filename, category, score, preview), ...]
 """
 
+import json
 import logging
 from pathlib import Path
 from typing import List, Tuple, Optional
-import pickle
 
 from .duplicate_detector import compute_md5
 from .config import ConfigError, load_config
 
 logger = logging.getLogger(__name__)
 
-# Cache file to avoid re-indexing every time
-INDEX_FILE = ".search_index.pkl"
-CACHE_SCHEMA_VERSION = 2
+# Cache file to avoid re-indexing every time. JSON (not pickle) so a tampered
+# cache can never execute code when it is loaded.
+INDEX_FILE = ".search_index.json"
+LEGACY_INDEX_FILE = ".search_index.pkl"     # never loaded; removed by clear_cache()
+CACHE_SCHEMA_VERSION = 3
+
+
+def _jsonable(item: dict) -> dict:
+    """Copy an index entry with its embedding as a plain list of floats."""
+    out = dict(item)
+    out["embedding"] = [float(x) for x in item["embedding"]]
+    return out
 
 
 def _file_signature(filepath: Path) -> dict:
@@ -53,11 +62,13 @@ class SemanticSearch:
 
     Parameters
     ----------
-    target_dir : str — the organized folder (contains category subfolders)
+    target_dir  : str — the organized folder (contains category subfolders)
+    config_path : optional custom config (used to find the category folders)
     """
 
-    def __init__(self, target_dir: str):
+    def __init__(self, target_dir: str, config_path: str | Path | None = None):
         self.target_dir = Path(target_dir)
+        self.config_path = config_path
         self._model        = None
         self._index        = []   # list of dicts: {path, category, text, embedding}
         self._is_built     = False
@@ -100,7 +111,7 @@ class SemanticSearch:
             return 0
 
         try:
-            cfg = load_config()
+            cfg = load_config(self.config_path)
             categories = cfg.get("categories", [])
         except ConfigError:
             categories = []
@@ -110,13 +121,13 @@ class SemanticSearch:
         cached_by_path = {}
         if not force and cache_path.exists():
             try:
-                with open(cache_path, "rb") as f:
-                    cached = pickle.load(f)
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    cached = json.load(f)
                 if cached.get("schema_version") == CACHE_SCHEMA_VERSION:
                     cached_by_path = {
                         item["path"]: item
                         for item in cached.get("index", [])
-                        if "path" in item and "content_hash" in item
+                        if "path" in item and "content_hash" in item and "embedding" in item
                     }
                 else:
                     logger.info("Ignoring old search cache schema; rebuilding.")
@@ -185,11 +196,12 @@ class SemanticSearch:
 
         # Save cache
         try:
-            with open(cache_path, "wb") as f:
-                pickle.dump(
-                    {"schema_version": CACHE_SCHEMA_VERSION, "index": self._index},
-                    f,
-                )
+            payload = {
+                "schema_version": CACHE_SCHEMA_VERSION,
+                "index": [_jsonable(item) for item in self._index],
+            }
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f)
             logger.info("Search index built and cached (%d files)", len(self._index))
         except Exception as e:
             logger.warning("Could not cache index: %s", e)
@@ -248,9 +260,10 @@ class SemanticSearch:
 
     def clear_cache(self):
         """Delete the cached index so it rebuilds on next call."""
-        cache_path = self.target_dir / INDEX_FILE
-        if cache_path.exists():
-            cache_path.unlink()
+        for name in (INDEX_FILE, LEGACY_INDEX_FILE):
+            cache_path = self.target_dir / name
+            if cache_path.exists():
+                cache_path.unlink()
         self._index    = []
         self._is_built = False
         logger.info("Search index cache cleared.")

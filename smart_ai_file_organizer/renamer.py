@@ -95,7 +95,7 @@ class SmartRenamer:
         except ImportError:
             logger.warning(
                 "openai package not installed — Smart Rename disabled.\n"
-                "Run: pip install openai"
+                "Run: pip install \"smart-ai-file-organizer[rename]\""
             )
             self.enabled = False
 

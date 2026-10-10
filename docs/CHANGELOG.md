@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented here.
 
+## [0.2.0] - 2026-10-10
+
+### Fixed
+
+- Manual corrections now teach the transformer classifier immediately (previously only
+  the TF-IDF fallback learned from them).
+- The transformer classifier uses the config's `training_data`, so custom categories
+  work. Previously only the 8 built-in categories had descriptions.
+- Both classifier paths share one low-confidence policy (score threshold plus margin
+  over the runner-up); low-confidence files go to the fallback category in both.
+- Smart Rename can no longer overwrite an existing file, and a failed move no longer
+  leaves a half-renamed file. Rename and move are now one step and one history entry.
+- `--dry-run` no longer calls the NVIDIA API or sends any text off the machine.
+- `--config` is respected when scanning: custom categories, extensions and the
+  duplicates folder are skipped correctly on recursive re-runs. Hidden folders
+  (`.git`, `.smart-organizer`) are skipped.
+- Manual overrides work for same-named files in recursive runs.
+- Categories returned by the TF-IDF model are plain `str`, not `numpy.str_`.
+
+### Changed
+
+- **Live runs now ask for confirmation** (`--yes` skips it; non-interactive sessions
+  without `--yes` are refused). `--yes` previously did nothing.
+- Duplicates are moved to `_Duplicates/` in live runs (recorded in history, so undo
+  restores them). Set `organizer.duplicates_folder` to `""` for the old behavior.
+- Semantic-search cache is JSON (`.search_index.json`) instead of pickle.
+- PDF extraction uses `pypdf` (PyPDF2 is deprecated). `openai` moved to the optional
+  `rename` extra.
+- Default training data doubled (16 samples per category).
+- Version bumped to 0.2.0.
+
+### Added
+
+- OCR fallback for scanned PDFs and images; Tesseract is found via `PATH`, then common
+  install locations on Windows and macOS.
+- Size and page caps in text extraction, and a bounded read for ZIP members.
+- `scripts/evaluate_classifier.py` and 56 held-out labelled samples; accuracy test in CI.
+- Tests for every extractor, the transformer logic (offline fake encoder), duplicate
+  handling, rename safety, CLI confirmation, and the JSON cache. Coverage 66% to 76%.
+- GitHub Actions: weekly/manual *AI model tests* with the real model, and a PyPI
+  publish workflow (trusted publishing).
+- `docs/LAUNCH_CHECKLIST.md` and `docs/media/social-preview.png`.
+
 ## Unreleased
 
 ### Added

@@ -56,13 +56,18 @@ stay tied to verified behavior.
 ## Safety Demo
 
 ```bash
-smart-organizer "D:\Downloads" --dry-run
-smart-organizer "D:\Downloads" --yes
-smart-organizer "D:\Downloads" --undo
+smart-organizer ~/Downloads --dry-run   # preview: nothing moves, no API calls
+smart-organizer ~/Downloads             # live run: asks for confirmation first
+smart-organizer ~/Downloads --yes       # live run without the prompt (scripts, cron)
+smart-organizer ~/Downloads --undo
 ```
 
+Paths are shown Unix-style; on Windows use `D:\Downloads` or any folder you like.
+A live run in a non-interactive session (pipe, cron, CI) is refused unless you pass
+`--yes`, so files are never moved by accident.
+
 Live runs write structured history to
-`D:\Downloads\.smart-organizer\history.jsonl`. Undo restores the latest run from
+`~/Downloads/.smart-organizer/history.jsonl`. Undo restores the latest run from
 that history and skips files whose contents changed after organization.
 
 ## Before vs After
@@ -94,7 +99,10 @@ untitled_notes.txt -> AI_Transformer_Research_Notes.txt
 
 - Content-aware document classification.
 - TXT, CSV, PDF, DOCX, XLSX, PPTX, EML, MSG, ZIP, PNG, JPG, and JPEG support.
-- Duplicate detection with content hashes.
+- Duplicate detection with content hashes. Live runs move duplicates into a
+  `_Duplicates/` folder (undo-able); set `organizer.duplicates_folder` to `""`
+  to leave them in place.
+- OCR fallback for scanned PDFs and images (optional `ocr` extra + Tesseract).
 - Semantic search across organized folders.
 - Dry-run, undo, recursive scan, watch mode, and operation logs.
 - Category management, manual overrides, confidence scores, and exports.
@@ -104,10 +112,10 @@ untitled_notes.txt -> AI_Transformer_Research_Notes.txt
 
 | Interface | Best For | Command |
 | --- | --- | --- |
-| CLI | Fast local automation and dry runs | `smart-organizer "D:\Downloads" --dry-run` |
+| CLI | Fast local automation and dry runs | `smart-organizer ~/Downloads --dry-run` |
 | Desktop GUI | Reviewable interactive organization | `smart-organizer-gui` |
 | Streamlit | Browser-based demo and uploads | `streamlit run streamlit_app.py` |
-| Watch Mode | Continuous folder monitoring | `smart-organizer-watch "D:\Downloads"` |
+| Watch Mode | Continuous folder monitoring | `smart-organizer-watch ~/Downloads` |
 
 ## Quick Start
 
@@ -115,7 +123,7 @@ untitled_notes.txt -> AI_Transformer_Research_Notes.txt
 git clone https://github.com/sarawagh27/smart-ai-file-organizer.git
 cd smart-ai-file-organizer
 python -m venv .venv
-.venv\Scripts\activate
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 python -m pip install --upgrade pip
 python -m pip install -e .
 ```
@@ -123,8 +131,9 @@ python -m pip install -e .
 Install optional AI, web, and OCR extras only when needed:
 
 ```bash
-python -m pip install -e ".[ai,web]"
-python -m pip install -e ".[ocr]"
+python -m pip install -e ".[ai,web]"   # transformer model + Streamlit app
+python -m pip install -e ".[ocr]"      # scanned PDFs and images (needs Tesseract)
+python -m pip install -e ".[rename]"   # Smart Rename (openai client)
 ```
 
 `pyproject.toml` is the canonical dependency manifest. `requirements.txt` is
@@ -135,39 +144,39 @@ kept only as a small deployment fallback for platforms that expect it.
 Preview organization without moving files:
 
 ```bash
-smart-organizer "D:\Downloads" --dry-run
+smart-organizer ~/Downloads --dry-run
 ```
 
 Organize a folder:
 
 ```bash
-smart-organizer "D:\Downloads" --yes
+smart-organizer ~/Downloads --yes
 ```
 
 Include subfolders:
 
 ```bash
-smart-organizer "D:\Downloads" --recursive
+smart-organizer ~/Downloads --recursive
 ```
 
 Enable AI-powered filenames:
 
 ```bash
-smart-organizer "D:\Downloads" --smart-rename
+smart-organizer ~/Downloads --smart-rename
 ```
 
 Undo the last run:
 
 ```bash
-smart-organizer-undo "D:\Downloads"
+smart-organizer-undo ~/Downloads
 ```
 
 Use custom config/history paths for demos or tests:
 
 ```bash
-smart-organizer "D:\Downloads" --dry-run --config .\config.example.json
-smart-organizer "D:\Downloads" --history "D:\Downloads\.smart-organizer\history.jsonl"
-smart-organizer "D:\Downloads" --undo --run-id <run-id>
+smart-organizer ~/Downloads --dry-run --config ./config.example.json
+smart-organizer ~/Downloads --history ~/Downloads/.smart-organizer/history.jsonl
+smart-organizer ~/Downloads --undo --run-id <run-id>
 smart-organizer --version
 ```
 
@@ -175,14 +184,14 @@ Launch interfaces directly:
 
 ```bash
 smart-organizer-gui
-smart-organizer-watch "D:\Downloads"
+smart-organizer-watch ~/Downloads
 streamlit run streamlit_app.py
 ```
 
 Wrapper scripts still work when you need to run without console commands:
 
 ```bash
-python scripts/main.py "D:\Downloads" --dry-run
+python scripts/main.py ~/Downloads --dry-run
 python scripts/gui.py
 ```
 
@@ -191,7 +200,7 @@ python scripts/gui.py
 `config.example.json` is the committed template. For local customization:
 
 ```bash
-copy config.example.json config.json
+cp config.example.json config.json      # Windows: copy config.example.json config.json
 ```
 
 `config.json` is ignored by git because it can contain private API keys and
@@ -212,12 +221,48 @@ Smart Rename can read the NVIDIA key from either:
 Smart Rename uses the NVIDIA OpenAI-compatible API to generate cleaner filenames
 from extracted document text.
 
+**Privacy:** with Smart Rename on, the first ~600 characters of each document are
+sent to the NVIDIA API. Nothing is sent otherwise, and `--dry-run` never calls the
+API. Renames happen as part of the move (one history entry, never overwriting an
+existing file), so `--undo` restores the original name.
+
 Setup:
 
+0. `python -m pip install -e ".[rename]"`
 1. Get an API key from `https://build.nvidia.com/models`.
 2. Copy `config.example.json` to `config.json`.
 3. Add your key under `smart_rename.api_key`, or set `NVIDIA_API_KEY`.
 4. Run with `--smart-rename`.
+
+## How Classification Works
+
+Both back ends use one policy: a prediction is **low confidence** when the top score is
+below a threshold or only narrowly beats the runner-up category. Low-confidence files go
+to `Other` and are flagged for review.
+
+- **Transformer** (`ai` extra): every example in `training_data`, plus your saved
+  corrections, is embedded once. A document gets the category of its closest example,
+  so custom categories work as soon as they have a few samples, and a correction takes
+  effect immediately.
+- **TF-IDF + Naive Bayes** (default, offline): retrained whenever you add a correction.
+
+Tune `classifier.confidence_threshold`, `classifier.transformer_confidence_threshold`
+and `classifier.min_margin` in `config.json`.
+
+### Accuracy
+
+`python scripts/evaluate_classifier.py` scores the classifier on 56 held-out labelled
+documents in `tests/data/labeled_samples.json` (including short, noisy and ambiguous
+ones). These are small, hand-written samples, so treat the numbers as a regression
+guard rather than a benchmark on your own files.
+
+| Model | Training data | Accuracy |
+| --- | --- | --- |
+| TF-IDF + Naive Bayes | v0.1.0 defaults (8 samples/category) | 80% (45/56) |
+| TF-IDF + Naive Bayes | v0.2.0 defaults (16 samples/category) | 95% (53/56) |
+| Transformer | v0.2.0 defaults | run `--transformer` (CI: *AI model tests*) |
+
+Add your own corrections or training samples to improve results on your documents.
 
 ## Tech Stack
 
@@ -230,7 +275,7 @@ Setup:
 | Language Detection | langdetect |
 | Web App | Streamlit |
 | Desktop GUI | Tkinter |
-| File Extraction | PyPDF2, python-docx, openpyxl, python-pptx, extract-msg |
+| File Extraction | pypdf, python-docx, openpyxl, python-pptx, extract-msg |
 | Watch Mode | watchdog |
 
 ## Project Structure
@@ -251,7 +296,7 @@ Setup:
 |   `-- undo.py
 |-- streamlit_app.py         # Streamlit Cloud wrapper
 |-- config.example.json      # Safe committed config template
-|-- scripts/                 # Optional local wrapper scripts
+|-- scripts/                 # Wrapper scripts + evaluate_classifier.py
 |-- docs/                    # Roadmap, changelog, and media guidance
 `-- tests/                   # Pytest suite
 ```
@@ -303,6 +348,9 @@ You can also use the Categories button in the desktop GUI.
   destination, hash, action type, timestamp, and run id for reliable undo.
 - `organizer.log` is for diagnostics only; undo uses structured history and
   refuses to restore a file whose content changed after the organize run.
+- Smart Rename is the only feature that sends text off your machine (first ~600
+  characters per file, only when enabled, never in dry-run).
+- The search index is stored as JSON, never pickle, so a tampered cache cannot run code.
 - Semantic search cache entries include file size, modified time, and content
   hash metadata so changed/deleted files are reindexed instead of served stale.
 

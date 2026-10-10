@@ -1083,7 +1083,7 @@ class SmartOrganizerApp(tk.Tk):
         # Try to get content preview
         text = ""
         if self._organizer:
-            text = self._organizer._file_texts.get(filename, "")
+            text = self._organizer.get_file_text(filename)
 
         if text and text.strip():
             preview = " ".join(text.split())[:300]

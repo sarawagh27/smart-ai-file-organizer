@@ -1,0 +1,74 @@
+{
+  "Finance": [
+    "Statement of account for September. Previous balance 42,310. Payments received 15,000. Interest charged 612. Total outstanding to be paid by the due date.",
+    "Tax invoice from Sharma Traders: 12 units at 450 each, subtotal, 18 percent GST, grand total, bank details for NEFT remittance.",
+    "Annual budget forecast: projected revenue, operating expenses, EBITDA margin, capital expenditure and cash position for the fiscal year.",
+    "Credit card bill summary: minimum amount due, total spends, reward points earned, late payment fee and last payment date.",
+    "Profit and loss statement for Q2 including gross margin, depreciation, net profit before tax and shareholder dividends declared.",
+    "Hospital bill paid by card, receipt attached, amount 8,400, reimbursement claim submitted to accounts.",
+    "Inv#8823 Tot 2,340.00 due 15th. Pls remit to a/c. Thx"
+  ],
+  "Resume": [
+    "Ananya Rao | Bengaluru | Objective: seeking a backend developer role. Experience: 2 years at a fintech startup. Skills: Go, PostgreSQL, Kubernetes.",
+    "Education: Master of Computer Applications, 2023. Internship at an IT services firm. Certifications in cloud computing. References available.",
+    "Dear Hiring Manager, please find my CV attached for the marketing associate opening. My previous employer promoted me twice in three years.",
+    "Key achievements: reduced customer churn by 15 percent, managed a team of eight, mentored junior staff. Languages: English, Hindi, Marathi.",
+    "Fresher seeking an entry level position. Academic projects in web development, final year project, GitHub portfolio and LinkedIn link included.",
+    "Machine learning engineer with Python and TensorFlow projects, B.Tech graduate, open to relocation.",
+    "Name, phone, email. Experience: intern, 6 months. Skills: Excel, communication. Hobbies: chess."
+  ],
+  "AI": [
+    "We train a bidirectional LSTM with an attention layer on sentiment data, tuning the learning rate and batch size to minimise cross entropy loss.",
+    "Using a pretrained BERT encoder and a classification head, the fine-tuned model reaches 92 percent accuracy on the held-out test set.",
+    "Autonomous agents call external tools, plan multi-step tasks, and use a large language model with memory and retrieval to complete workflows.",
+    "Generative adversarial networks: the generator and discriminator are trained together to synthesize realistic images from random noise.",
+    "Overfitting was reduced with regularization and early stopping; the confusion matrix shows strong precision but weaker recall on rare classes.",
+    "Tutorial: training a small neural net in PyTorch, loss curves, learning rate schedule, saving checkpoints.",
+    "Embedding vectors from a sentence model are compared by cosine similarity to rank search results."
+  ],
+  "Research": [
+    "Abstract. This study examines the relationship between urban green space and reported well-being using a cross-sectional survey of 800 residents.",
+    "Our methodology follows a mixed-methods design. Section 4 presents the results, Section 5 discusses limitations and directions for future research.",
+    "Hypothesis H1 was supported (p = 0.03). The experimental group outperformed controls, though the sample size limits generalizability.",
+    "Submitted to the Journal of Applied Sciences. Reviewer comments, revised manuscript, references, and supplementary data availability statement.",
+    "Doctoral dissertation proposal: research questions, theoretical framework, data collection plan, and anticipated contribution to the literature.",
+    "Findings suggest a weak correlation; further studies with larger cohorts are needed (n=64).",
+    "Methods: participants were recruited from three schools. Table 2 reports descriptive statistics."
+  ],
+  "Personal": [
+    "Hey Riya, thanks for the lovely evening yesterday! Let's plan the road trip with the gang next month. Missing you already, lots of love.",
+    "Journal: I woke up early, made tea, wrote down what I'm grateful for, and called my sister to wish her a happy birthday.",
+    "Our anniversary dinner reservation, a list of gift ideas for my husband, and photos to print for the family album.",
+    "Things I want to do this summer: learn to swim properly, visit grandparents, read five novels, and go camping with friends.",
+    "Dearest Nana, thank you for the sweater. The whole family sends hugs and we cannot wait to see you at Diwali.",
+    "Note to self: renew passport, book dentist, buy flowers for mum's birthday, call Arjun back.",
+    "We reached the hill station at sunrise, the kids loved the toy train and hot chocolate."
+  ],
+  "Legal": [
+    "Lease agreement between the lessor and lessee for a residential flat, monthly rent, lock-in period, maintenance charges and eviction terms.",
+    "The parties agree that any dispute arising out of this agreement shall be subject to the exclusive jurisdiction of the courts in Mumbai.",
+    "Confidentiality agreement: the recipient shall not disclose proprietary information and shall indemnify the discloser against any breach.",
+    "Affidavit sworn before a notary public by the deponent stating the facts, with annexures and a verification clause.",
+    "Notice of termination of the consultancy contract effective thirty days from receipt, as per clause 12 of the agreement.",
+    "Whereas the parties hereto agree as follows; the licensee shall pay royalties and the licensor retains all rights.",
+    "Court summons: you are required to appear before the magistrate on the date mentioned below."
+  ],
+  "Medical": [
+    "Patient name, age 45. Chief complaint: chest pain on exertion. ECG normal. Cardiology consultation advised. Prescribed aspirin and a statin.",
+    "Pathology report: serum creatinine, HbA1c, lipid profile and thyroid panel. Values flagged outside the reference range are marked.",
+    "Dental treatment plan: root canal procedure, crown placement, follow-up appointment and post-operative care instructions from the dentist.",
+    "Insurance pre-authorization for surgery, hospital admission date, diagnosis, estimated treatment cost and policy number.",
+    "Allergy test results and doctor's advice: avoid trigger foods, carry antihistamines, review symptoms after four weeks.",
+    "Take one capsule after dinner for ten days. Review with Dr. Mehta if the fever persists.",
+    "Ultrasound abdomen: liver normal in size, no focal lesion. Impression and advice below."
+  ],
+  "Other": [
+    "Agenda for Monday's team sync: sprint review, blockers, announcements from the office manager, and a quick round of updates.",
+    "Ingredients: two cups flour, one cup sugar, three eggs. Preheat the oven to 180 degrees and bake for thirty minutes until golden.",
+    "User manual for the air purifier. Safety instructions, filter replacement, troubleshooting common problems, and warranty terms.",
+    "This week's neighborhood newsletter: road closure notice, library hours, community garden volunteers needed and upcoming events.",
+    "Release notes version 2.4: improved performance, fixed login bug, added dark mode, and updated system requirements.",
+    "Wifi password list and office seating chart for the third floor.",
+    "Weekend market stalls: fresh vegetables, handmade soap, live music from noon."
+  ]
+}

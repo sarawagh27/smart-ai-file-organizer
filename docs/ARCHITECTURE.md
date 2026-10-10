@@ -9,10 +9,12 @@ external NVIDIA/OpenAI-compatible API key.
 1. `main.py`, `gui.py`, `streamlit_app.py`, or `watcher.py` accepts files from a
    folder, upload, or filesystem event.
 2. `text_extractor.py` extracts text from supported formats.
-3. `classifier.py` classifies content with sentence-transformers when available,
-   or a fast offline TF-IDF/Naive Bayes fallback.
-4. `organizer.py` moves files into category folders and records every live
-   rename/move in `.smart-organizer/history.jsonl`.
+3. `classifier.py` classifies content with sentence-transformers (nearest labelled
+   example, including saved corrections) when available, or a fast offline
+   TF-IDF/Naive Bayes fallback. Both use the same score-plus-margin confidence policy.
+4. `organizer.py` moves files into category folders (applying Smart Rename as part of
+   the move), quarantines duplicates in `_Duplicates/`, and records every live move in
+   `.smart-organizer/history.jsonl`.
 5. `undo.py` reverses the latest recorded run using structured history, with
    hash checks to avoid restoring files that changed after the original run.
 
@@ -21,13 +23,17 @@ external NVIDIA/OpenAI-compatible API key.
 - `config.json`: private local settings, API keys, categories, and corrections.
 - `config.example.json`: safe committed default configuration.
 - `.smart-organizer/history.jsonl`: append-only structured operation history.
-- `.search_index.pkl`: local semantic-search cache with file hash/mtime/size
+- `.search_index.json`: local semantic-search cache (JSON, never pickle) with file hash/mtime/size
   metadata for stale-entry detection.
 - `organizer.log`: human-readable diagnostics only; undo no longer depends on it.
 
 ## Safety Model
 
-- Dry-run mode never creates category folders, moves files, or writes history.
+- Dry-run mode never creates category folders, moves files, writes history, or calls
+  external APIs.
+- Live runs ask for confirmation unless `--yes` is given; non-interactive sessions
+  without `--yes` are refused.
+- No operation overwrites an existing file: moves and renames add a numeric suffix.
 - Live mode records each operation before it can be undone later.
 - Undo restores the latest run in reverse order and writes collision-safe
   filenames when the original path is already occupied.

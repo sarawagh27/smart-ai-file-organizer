@@ -71,17 +71,19 @@ def test_undo_uses_collision_safe_restore_name(tmp_path):
     assert (tmp_path / "invoice_restored_1.txt").exists()
 
 
-def test_smart_rename_records_rename_and_move_then_undo_restores_original(tmp_path, monkeypatch):
+def test_smart_rename_is_one_move_and_undo_restores_original_name(tmp_path, monkeypatch):
     config_path = _write_config(tmp_path)
     (tmp_path / "scan.txt").write_text("invoice payment bank account tax revenue")
     monkeypatch.setattr(SmartRenamer, "rename", lambda self, name, text: "Invoice_Acme.txt")
 
     FileOrganizer(str(tmp_path), smart_rename=True, api_key="x", config_path=config_path).run()
 
+    # Rename and move happen together: one history record, new name at the destination.
     records = OperationHistory.for_target(tmp_path).read_records()
-    assert [record.action for record in records] == ["rename", "move"]
+    assert [record.action for record in records] == ["move"]
+    assert (tmp_path / "Finance" / "Invoice_Acme.txt").exists()
 
     stats = undo_moves(str(tmp_path))
 
-    assert stats["restored"] == 2
+    assert stats["restored"] == 1
     assert (tmp_path / "scan.txt").exists()

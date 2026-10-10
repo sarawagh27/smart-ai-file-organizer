@@ -6,6 +6,9 @@ than platform sprawl.
 ## Near Term
 
 - Add real screenshot assets for the CLI and desktop GUI.
+- Run `scripts/evaluate_classifier.py --transformer` and put the number in the README.
+- Publish v0.2.0 to PyPI (see `docs/LAUNCH_CHECKLIST.md`).
+- Apply the `_Duplicates/` quarantine to watch mode (it currently leaves duplicates in place).
 - Add optional coverage publishing once the repository has a public coverage target.
 - Extract UI and watch-mode business logic into testable adapters.
 - Add manual smoke-test evidence for CLI, GUI, and Streamlit demo flows.

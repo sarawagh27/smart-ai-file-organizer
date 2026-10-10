@@ -19,6 +19,8 @@ from .history import OperationHistory, new_run_id
 from .renamer import SmartRenamer
 from .text_extractor import extract_text
 from .utils import (
+    DEFAULT_DUPLICATES_FOLDER,
+    DEFAULT_EXTENSIONS,
     create_category_folders,
     safe_move,
     scan_directory,
@@ -58,6 +60,11 @@ class FileOrganizer:
         self.history       = OperationHistory.for_target(self.target_dir, history_path)
 
         self.classifier         = DocumentClassifier(config_path=config_path)
+        org_cfg = self.classifier.config.get("organizer", {})
+        self.extensions         = set(org_cfg.get("supported_extensions") or DEFAULT_EXTENSIONS)
+        # Folder that receives duplicate files in live mode. Set
+        # organizer.duplicates_folder to "" in config to leave duplicates in place.
+        self.duplicates_folder  = org_cfg.get("duplicates_folder", DEFAULT_DUPLICATES_FOLDER)
         self.duplicate_detector = DuplicateDetector()
         self.renamer            = SmartRenamer(api_key=api_key, enabled=smart_rename)
 
@@ -70,8 +77,13 @@ class FileOrganizer:
             "by_category":    {cat: 0 for cat in self.classifier.categories},
         }
 
-        # Map filename → extracted text (used by GUI for manual override)
+        # Extracted text for manual overrides: by original filename (GUI) and by
+        # final path (collision-proof when recursive runs see identical names).
         self._file_texts: Dict[str, str] = {}
+        self._texts_by_path: Dict[str, str] = {}
+
+        # (filename, path of the file it duplicates, where it ended up)
+        self.duplicate_report: List[Tuple[str, str, str]] = []
 
         # Results list: (filename, category, confidence_pct, is_low, dest_path)
         self.results: List[Tuple[str, str, float, bool, str]] = []
@@ -96,7 +108,13 @@ class FileOrganizer:
         if not self.dry_run:
             create_category_folders(self.target_dir, self.classifier.categories)
 
-        files = scan_directory(self.target_dir, recursive=self.recursive)
+        files = scan_directory(
+            self.target_dir,
+            recursive=self.recursive,
+            categories=self.classifier.categories,
+            extensions=self.extensions,
+            skip_folders=[self.duplicates_folder] if self.duplicates_folder else [],
+        )
         self._stats["total_files"] = len(files)
 
         if not files:
@@ -172,7 +190,7 @@ class FileOrganizer:
                     )
 
                     # Teach the classifier
-                    text = self._file_texts.get(fname, "")
+                    text = self._texts_by_path.get(dest) or self._file_texts.get(fname, "")
                     if text:
                         self.classifier.add_correction(text, correct_category)
 
@@ -184,7 +202,45 @@ class FileOrganizer:
         logger.warning("Override: file '%s' not found in results.", filename)
         return False
 
+    def get_file_text(self, filename: str) -> str:
+        """Extracted text for a processed file (used by the GUI override dialog)."""
+        if filename in self._file_texts:
+            return self._file_texts[filename]
+        for path, text in self._texts_by_path.items():      # renamed / de-duplicated names
+            if Path(path).name == filename:
+                return text
+        return ""
+
     # ── internal ────────────────────────────────────────────────────────────
+    def _handle_duplicate(self, filepath: str, original: str) -> None:
+        """Count a duplicate and, in live mode, quarantine it (undo-able)."""
+        filename = Path(filepath).name
+        self._stats["duplicates"] += 1
+        outcome = "left in place"
+
+        if self.duplicates_folder:
+            dup_dir = str(Path(self.target_dir) / self.duplicates_folder)
+            if self.dry_run:
+                outcome = f"{self.duplicates_folder}/ (dry run)"
+                logger.info("  [DRY RUN] duplicate '%s' → %s/", filename, self.duplicates_folder)
+            else:
+                try:
+                    file_hash = compute_md5(filepath)
+                    dest = safe_move(filepath, dup_dir)
+                    self.history.record(
+                        run_id=self.run_id,
+                        action="move",
+                        source_path=filepath,
+                        destination_path=dest,
+                        source_hash=file_hash,
+                        destination_hash=file_hash,
+                    )
+                    outcome = f"{self.duplicates_folder}/"
+                except Exception as exc:
+                    logger.error("Could not move duplicate '%s': %s", filename, exc)
+                    self._stats["errors"] += 1
+        self.duplicate_report.append((filename, original, outcome))
+
     def _process_file(self, filepath: str) -> None:
         filename = Path(filepath).name
         logger.info("Processing: %s", filename)
@@ -193,10 +249,9 @@ class FileOrganizer:
         is_dup, original = self.duplicate_detector.check(filepath)
         if is_dup:
             logger.warning(
-                "DUPLICATE — skipping '%s' (matches '%s')",
-                filename, Path(original).name,
+                "DUPLICATE — '%s' matches '%s'", filename, Path(original).name,
             )
-            self._stats["duplicates"] += 1
+            self._handle_duplicate(filepath, original)
             return
 
         # Text extraction
@@ -210,7 +265,7 @@ class FileOrganizer:
         if not text.strip():
             logger.warning("No text extracted from '%s'; classifying as 'Other'.", filename)
 
-        # Store text for potential override
+        # Store text for potential override (filename-keyed copy kept for the GUI)
         self._file_texts[filename] = text
 
         # Classification with confidence
@@ -230,29 +285,18 @@ class FileOrganizer:
         else:
             logger.info("  ↳ Category: %s (%.1f%% confident)", category, confidence_pct)
 
-        # Smart rename
-        new_filename = self.renamer.rename(filename, text)
-        if new_filename != filename and not self.dry_run:
-            try:
-                old_filepath = Path(filepath)
-                new_filepath = old_filepath.parent / new_filename
-                file_hash = compute_md5(str(old_filepath))
-                old_filepath.rename(new_filepath)
-                self.history.record(
-                    run_id=self.run_id,
-                    action="rename",
-                    source_path=old_filepath,
-                    destination_path=new_filepath,
-                    source_hash=file_hash,
-                    destination_hash=file_hash,
-                )
-                filepath = str(new_filepath)
-                filename = new_filename
-            except Exception as exc:
-                logger.warning("Rename failed: %s", exc)
+        # Smart rename. The new name is applied during the move itself, so there is
+        # no half-renamed state, no overwrite risk, and undo restores the original
+        # name. Dry runs never call the external API.
+        new_filename = filename
+        if self.dry_run:
+            if self.renamer.enabled:
+                logger.info("  [DRY RUN] Smart Rename skipped (no text is sent to the API).")
+        else:
+            new_filename = self.renamer.rename(filename, text)
 
         dest_dir  = str(Path(self.target_dir) / category)
-        dest_path = str(Path(dest_dir) / filename)
+        dest_path = str(Path(dest_dir) / new_filename)
         file_hash = compute_md5(filepath) if not self.dry_run else None
 
         # Move or simulate
@@ -260,7 +304,7 @@ class FileOrganizer:
             logger.info("  [DRY RUN] '%s' → %s/", filename, category)
         else:
             try:
-                dest_path = safe_move(filepath, dest_dir)
+                dest_path = safe_move(filepath, dest_dir, dest_name=new_filename)
                 self.history.record(
                     run_id=self.run_id,
                     action="move",
@@ -273,6 +317,8 @@ class FileOrganizer:
                 logger.error("Move failed for '%s': %s", filename, exc)
                 self._stats["errors"] += 1
                 return
+            if new_filename != filename:
+                logger.info("  ✏️  Renamed on move: '%s' → '%s'", filename, Path(dest_path).name)
 
         self._stats["moved"] += 1
         self._stats["by_category"][category] = (
@@ -280,4 +326,6 @@ class FileOrganizer:
         )
 
         # Store result for potential override
-        self.results.append((filename, category, confidence_pct, is_low, dest_path))
+        final_name = Path(dest_path).name
+        self._texts_by_path[dest_path] = text
+        self.results.append((final_name, category, confidence_pct, is_low, dest_path))

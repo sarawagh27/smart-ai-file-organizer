@@ -20,7 +20,7 @@ def _package_version() -> str:
     try:
         return version(PACKAGE_NAME)
     except PackageNotFoundError:
-        return "0.1.0"
+        return "0.2.0"
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,8 +66,8 @@ def parse_args() -> argparse.Namespace:
         help="Undo a specific run id instead of the latest run.",
     )
     parser.add_argument(
-        "--yes", action="store_true",
-        help="Acknowledge live mode when scripting. Default behavior is unchanged.",
+        "--yes", "-y", action="store_true",
+        help="Skip the confirmation prompt for live runs (needed in scripts and cron jobs).",
     )
     parser.add_argument(
         "--version",
@@ -79,6 +79,27 @@ def parse_args() -> argparse.Namespace:
         help="Enable DEBUG-level logging.",
     )
     return parser.parse_args()
+
+
+def confirm_live_run(target: Path, assume_yes: bool, smart_rename: bool) -> bool:
+    """
+    Ask before moving real files. Returns True when the run may proceed.
+
+    With --yes the prompt is skipped. Without it, a non-interactive session
+    (pipes, cron, CI) is refused instead of silently moving files.
+    """
+    if assume_yes:
+        return True
+    if not sys.stdin.isatty():
+        print(
+            "[ERROR] Live run needs confirmation, but this session is not interactive.\n"
+            "        Re-run with --dry-run to preview, or --yes to proceed.",
+            file=sys.stderr,
+        )
+        return False
+    extra = " Text excerpts will be sent to the NVIDIA API for renaming." if smart_rename else ""
+    answer = input(f"Move files in '{target}'? Undo stays available.{extra} [y/N]: ")
+    return answer.strip().lower() in {"y", "yes"}
 
 
 def main() -> int:
@@ -123,8 +144,11 @@ def main() -> int:
 
     if args.dry_run:
         print("DRY RUN - no files will be moved.\n")
-    elif not args.yes:
-        print("LIVE MODE - files may be renamed and moved. Use --dry-run to preview first.\n")
+    else:
+        print("LIVE MODE - files will be moved. Use --dry-run to preview first.\n")
+        if not confirm_live_run(target, args.yes, args.smart_rename):
+            print("Cancelled. No files were changed.")
+            return 2
 
     try:
         cfg = load_config(args.config)

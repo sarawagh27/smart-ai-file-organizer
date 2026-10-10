@@ -6,6 +6,7 @@ Use this checklist before tagging or publishing a showcase build.
 
 - [ ] `python -m ruff check .`
 - [ ] `SMART_ORGANIZER_DISABLE_TRANSFORMERS=1 python -m pytest --cov=smart_ai_file_organizer --cov-report=term-missing --cov-report=xml`
+- [ ] `python scripts/evaluate_classifier.py` (and `--transformer` when the `ai` extra is installed)
 - [ ] `python -m build`
 - [ ] CLI smoke: dry-run a sample folder.
 - [ ] CLI smoke: live move one disposable file, then undo it.

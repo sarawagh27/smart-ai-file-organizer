@@ -36,6 +36,11 @@ jobs:
           SMART_ORGANIZER_DISABLE_TRANSFORMERS: "1"
         run: python -m pytest --cov=smart_ai_file_organizer --cov-report=term-missing --cov-report=xml
 
+      - name: Classifier accuracy on held-out samples
+        env:
+          SMART_ORGANIZER_DISABLE_TRANSFORMERS: "1"
+        run: python scripts/evaluate_classifier.py
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:

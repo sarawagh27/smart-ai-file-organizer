@@ -18,7 +18,15 @@
       "budget spreadsheet monthly expenses rent utilities groceries savings emergency fund debt repayment net worth financial planning",
       "cryptocurrency bitcoin ethereum blockchain wallet exchange trading portfolio altcoin defi staking yield",
       "audit compliance financial risk management hedge fund derivatives futures options securities equity bonds",
-      "purchase order vendor supplier payment terms net30 invoice number billing address accounts payable receivable"
+      "purchase order vendor supplier payment terms net30 invoice number billing address accounts payable receivable",
+      "Invoice number 4471 dated 12 March. Amount due 1,299.00 payable within 30 days by bank transfer. GST included.",
+      "Monthly bank statement: opening balance, deposits, withdrawals, closing balance, interest credited, service charges.",
+      "Quarterly earnings report shows revenue growth of 8 percent, operating profit, net income, and dividend per share.",
+      "Income tax return filing: gross salary, deductions under section 80C, taxable income, advance tax paid, refund due.",
+      "Expense report with receipts for travel, meals and lodging. Total reimbursable amount and approval by finance manager.",
+      "Home loan EMI schedule showing principal, interest, outstanding balance, tenure and prepayment options.",
+      "Budget spreadsheet for the year: planned versus actual spending, savings target, cash flow forecast by month.",
+      "Purchase order and payment receipt for goods supplied, unit price, quantity, tax, total paid via credit card."
     ],
     "Resume": [
       "resume curriculum vitae work experience education skills objective summary references bachelor master degree university college GPA",
@@ -28,7 +36,15 @@
       "career objective seeking position motivated dynamic team player years experience proficient detail oriented results driven",
       "internship volunteer work extracurricular activities awards honors certifications professional development training",
       "references available upon request portfolio github projects open source contributions technical skills proficiency",
-      "agile scrum kanban product owner stakeholder management cross-functional team delivery milestone sprint backlog"
+      "agile scrum kanban product owner stakeholder management cross-functional team delivery milestone sprint backlog",
+      "Professional summary: software engineer with 3 years of experience in Python and cloud services. Open to new roles.",
+      "Education: B.Tech in Computer Science, CGPA 8.7. Internship experience, projects, certifications, and technical skills.",
+      "Work experience: led a team of five, improved performance by 40 percent, responsible for deployment and code review.",
+      "Curriculum vitae of a final-year student: objective, academic projects, languages known, hobbies, references on request.",
+      "Cover letter applying for the position of data analyst; I am excited to bring my skills and experience to your team.",
+      "Skills: Java, SQL, React, Git, Docker. Achievements: hackathon winner, published open source contributor, LinkedIn profile.",
+      "Career objective seeking an entry-level role where I can apply my degree and grow; employment history listed below.",
+      "Candidate profile with work history, notice period, expected salary, and professional references from previous employers."
     ],
     "AI": [
       "artificial intelligence machine learning deep learning neural network model training dataset accuracy loss epoch optimizer",
@@ -38,7 +54,15 @@
       "large language model prompt engineering fine tuning few shot zero shot inference hallucination alignment RLHF",
       "data science pandas numpy scikit-learn matplotlib seaborn regression classification clustering feature engineering",
       "generative AI diffusion model GAN stable diffusion text-to-image multimodal foundation model",
-      "MLOps model deployment pipeline monitoring drift inference serving kubernetes docker containerization"
+      "MLOps model deployment pipeline monitoring drift inference serving kubernetes docker containerization",
+      "We fine-tune a transformer language model on a labelled dataset and report validation loss and accuracy per epoch.",
+      "Convolutional neural network for image classification trained with data augmentation, dropout and the Adam optimizer.",
+      "Large language model agents use retrieval augmented generation, embeddings, and a vector database for question answering.",
+      "Reinforcement learning agent learns a policy by maximizing cumulative reward in a simulated environment.",
+      "Notebook: load the dataset, split into train and test, train a random forest, evaluate precision recall and F1 score.",
+      "Prompt engineering, tokenization, attention mechanism, and inference latency of GPT style models in production.",
+      "Computer vision pipeline for object detection using YOLO, bounding boxes, and mean average precision on a benchmark.",
+      "Machine learning model deployment, MLOps, feature engineering, hyperparameter tuning, and model monitoring for drift."
     ],
     "Research": [
       "abstract introduction methodology results conclusion references hypothesis experiment data analysis statistical significance p-value",
@@ -48,7 +72,15 @@
       "experiment protocol procedure lab report hypothesis null alternative standard deviation mean variance confidence interval",
       "systematic review meta-analysis randomized controlled trial cohort study longitudinal cross-sectional survey",
       "ANOVA t-test chi-square regression correlation coefficient R-squared confidence interval statistical power",
-      "citation APA MLA Chicago bibliography footnote endnote DOI journal volume issue pages authors affiliation"
+      "citation APA MLA Chicago bibliography footnote endnote DOI journal volume issue pages authors affiliation",
+      "Abstract: this paper investigates the effect of sleep on memory using a randomized controlled trial with 120 participants.",
+      "Literature review of prior work, research gap, and the proposed methodology. Results are statistically significant (p < 0.05).",
+      "Thesis chapter: experimental setup, data collection, analysis of variance, discussion of limitations, and future work.",
+      "Journal article submitted for peer review. Keywords, introduction, related work, findings, conclusion, and references.",
+      "Survey study on urban mobility: sampling method, questionnaire design, regression analysis and interpretation of findings.",
+      "Conference paper presenting a novel framework, evaluation against baselines, ablation study and acknowledgements.",
+      "Research proposal outlining objectives, hypothesis, timeline, expected outcomes and ethical considerations.",
+      "Case study analysis with qualitative interviews, thematic coding, and implications for policy and practice."
     ],
     "Personal": [
       "dear diary today feeling happy sad birthday party family vacation trip holiday memories childhood friend",
@@ -58,7 +90,15 @@
       "grocery list shopping errands laundry appointment doctor dentist reminder home maintenance personal tasks",
       "travel itinerary hotel flight booking reservation passport visa destination sightseeing activities accommodation",
       "recipe cooking baking ingredients instructions preparation time servings calories nutrition",
-      "fitness workout gym exercise routine calories steps weight loss health goals progress tracking"
+      "fitness workout gym exercise routine calories steps weight loss health goals progress tracking",
+      "Dear Mom, I hope you are well. We had a lovely weekend at the beach and I miss everyone at home already.",
+      "Diary entry: today I felt grateful and a little anxious. Went for a long walk and thought about the year ahead.",
+      "Packing list and itinerary for our family trip to Goa: flights, hotel booking, beach day, dinner with friends.",
+      "Birthday party planning: guest list, cake, decorations, playlist, and a surprise message for my best friend.",
+      "Wedding invitation with date, venue, and RSVP for relatives and friends. Looking forward to celebrating together.",
+      "Thoughts on my goals for next year: fitness, reading more books, learning guitar, spending time with family.",
+      "Holiday photos caption notes and memories from our summer vacation with cousins and old school friends.",
+      "To-do for the weekend: call grandma, buy a gift, clean the house, meet friends for coffee, plan a movie night."
     ],
     "Legal": [
       "contract agreement terms conditions clause party obligation liability warranty disclaimer jurisdiction governing law",
@@ -68,7 +108,15 @@
       "employment contract offer letter at-will termination severance non-compete clause benefits compensation",
       "privacy policy GDPR data protection personal information processing consent user rights",
       "terms of service acceptable use policy prohibited content user agreement platform rules",
-      "power of attorney notarized affidavit sworn statement deposition subpoena court order injunction"
+      "power of attorney notarized affidavit sworn statement deposition subpoena court order injunction",
+      "This Rental Agreement is made between the Landlord and the Tenant. Security deposit, lease term, and termination notice.",
+      "Non-disclosure agreement: the receiving party shall keep confidential information secret and not disclose it to third parties.",
+      "Terms and conditions of service, limitation of liability, indemnification, governing law and dispute resolution by arbitration.",
+      "Employment contract: position, probation period, notice, intellectual property assignment and non-compete clause.",
+      "Legal notice issued by the advocate on behalf of the client demanding payment, failing which proceedings will be filed in court.",
+      "Power of attorney, affidavit, and notarized declaration executed before a magistrate witness and stamp duty paid.",
+      "Privacy policy and data processing addendum describing consent, jurisdiction, statutory rights and compliance obligations.",
+      "Sale deed for property: seller, buyer, consideration, title, encumbrance, registration and possession on completion."
     ],
     "Medical": [
       "patient diagnosis treatment prescription medication dosage symptoms clinical notes doctor nurse hospital",
@@ -78,7 +126,15 @@
       "clinical trial study drug therapy intervention placebo control arm endpoint adverse events",
       "radiology MRI CT scan X-ray ultrasound findings impression recommendation follow-up",
       "vaccination immunization schedule booster dose side effects contraindications allergy",
-      "mental health therapy counseling depression anxiety PTSD CBT psychiatry mood disorder"
+      "mental health therapy counseling depression anxiety PTSD CBT psychiatry mood disorder",
+      "Discharge summary: the patient was admitted with fever, treated with antibiotics, advised rest and follow up in one week.",
+      "Blood test report: hemoglobin, cholesterol, glucose, creatinine levels with reference ranges. Pathology laboratory results.",
+      "Prescription: tablet twice daily after meals for five days. Dosage, refill, allergies, and physician signature.",
+      "Radiology report: chest X-ray shows no acute abnormality. MRI findings reviewed by the consultant radiologist.",
+      "Health insurance claim form with hospital bills, diagnosis code, treatment dates and cashless approval.",
+      "Vaccination record and immunization schedule with dates, vaccine name, batch number and clinic details.",
+      "Clinical notes: patient complains of headache and nausea, blood pressure measured, referred to a specialist.",
+      "Medical certificate stating the patient is unfit for work for three days due to illness, issued by the doctor."
     ],
     "Other": [
       "user manual installation guide troubleshooting FAQ instructions setup configuration system requirements steps procedure",
@@ -86,7 +142,15 @@
       "news article event report announcement press release spokesperson comment statement update information coverage",
       "product description specification features price availability review rating customer feedback",
       "presentation slide deck overview summary key points bullet points charts graphs figures",
-      "email newsletter subject body greeting signature unsubscribe list campaign marketing promotion"
+      "email newsletter subject body greeting signature unsubscribe list campaign marketing promotion",
+      "Meeting agenda: welcome, review of action items, project updates, open discussion, next steps and adjourn.",
+      "Recipe: ingredients, preparation steps, cooking time, serves four. Mix well and bake until golden brown.",
+      "Product description and technical specifications: dimensions, weight, color options, warranty card and package contents.",
+      "News article about a local event, quotes from residents, and details about the schedule for the coming weekend.",
+      "Quick start guide: unbox the device, charge the battery, press the power button, pair with your phone via Bluetooth.",
+      "Newsletter with updates, announcements, community events, and links to read more on our website.",
+      "Class timetable and notice board announcements for the week, room allocation, and holiday schedule.",
+      "Software release notes: new features, bug fixes, known issues, compatibility, and upgrade instructions."
     ]
   },
   "classifier": {
@@ -95,7 +159,9 @@
       1,
       2
     ],
-    "naive_bayes_alpha": 0.4
+    "naive_bayes_alpha": 0.4,
+    "transformer_confidence_threshold": 0.3,
+    "min_margin": 0.02
   },
   "organizer": {
     "supported_extensions": [
@@ -113,12 +179,13 @@
       ".jpeg"
     ],
     "fallback_category": "Other",
-    "recursive": false
+    "recursive": false,
+    "duplicates_folder": "_Duplicates"
   },
   "smart_rename": {
     "enabled": false,
     "api_key": "nvapi-your-key-here",
-    "note": "Get your FREE API key from https://build.nvidia.com/models \u2014 click any model then Get API Key"
+    "note": "Get your FREE API key from https://build.nvidia.com/models — click any model then Get API Key"
   },
   "corrections": []
 }

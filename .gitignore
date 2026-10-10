@@ -21,6 +21,7 @@ build/
 *.log
 organizer.log
 .search_index.pkl
+.search_index.json
 .smart-organizer/
 .omx/
 
